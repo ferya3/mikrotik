@@ -1,0 +1,295 @@
+// MikroTik Network Management Platform — database schema (source of truth for the ERD).
+// See docs/erd.md for the diagram and the reasoning behind each table.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────── Identity & RBAC ───────────────────────────────
+
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  username      String    @unique
+  email         String?   @unique
+  fullName      String?
+  passwordHash  String
+  isActive      Boolean   @default(true)
+  // TOTP secret is encrypted with the same envelope as router credentials.
+  totpSecretEnc String?
+  totpEnabled   Boolean   @default(false)
+  failedLogins  Int       @default(0)
+  lockedUntil   DateTime?
+  lastLoginAt   DateTime?
+  lastLoginIp   String?
+  roleId        String    @db.Uuid
+  role          Role      @relation(fields: [roleId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions  Session[]
+  auditLogs AuditLog[]
+  backups   Backup[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String           @id @default(uuid()) @db.Uuid
+  name        String           @unique // super_admin, network_admin, operator, monitoring, read_only
+  description String?
+  isSystem    Boolean          @default(false) // system roles cannot be deleted
+  permissions RolePermission[]
+  users       User[]
+  createdAt   DateTime         @default(now())
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  key         String           @unique // e.g. "firewall:write"
+  description String?
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// Server-side session record: lets us revoke a JWT before it expires (logout, lockout, password change).
+model Session {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ip        String?
+  userAgent String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ─────────────────────────────── Routers ───────────────────────────────
+
+enum ConnectionType {
+  REST // RouterOS v7+  https://<host>/rest
+  API // RouterOS API 8728 / API-SSL 8729
+}
+
+enum RouterStatus {
+  UNKNOWN
+  ONLINE
+  OFFLINE
+  AUTH_FAILED
+}
+
+model RouterGroup {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String        @unique
+  description String?
+  parentId    String?       @db.Uuid
+  parent      RouterGroup?  @relation("GroupTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    RouterGroup[] @relation("GroupTree")
+  routers     Router[]
+  createdAt   DateTime      @default(now())
+
+  @@map("router_groups")
+}
+
+model Router {
+  id             String         @id @default(uuid()) @db.Uuid
+  name           String         @unique
+  host           String
+  port           Int?
+  connectionType ConnectionType @default(REST)
+  useTls         Boolean        @default(true)
+  // When false the TLS certificate is not verified (self-signed RouterOS certs). Prefer pinning a CA instead.
+  verifyTls      Boolean        @default(false)
+  sshPort        Int            @default(22)
+  // SHA-256 of the SSH host key, pinned on first use (TOFU). A mismatch aborts the connection.
+  sshHostKeySha256 String?
+  groupId       String?        @db.Uuid
+  group          RouterGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  location       String?
+  tags           String[]       @default([])
+
+  status         RouterStatus   @default(UNKNOWN)
+  lastSeenAt     DateTime?
+  identity       String?
+  boardName      String?
+  version        String?
+  architecture   String?
+  serialNumber   String?
+
+  credential     RouterCredential?
+  backups        Backup[]
+  auditLogs      AuditLog[]
+  alerts         Alert[]
+  metrics        MetricSample[]
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([groupId])
+  @@map("routers")
+}
+
+// Credentials live in their own table so they are never selected by accident with a Router row.
+// password is AES-256-GCM encrypted: "v<keyVersion>:<iv>:<tag>:<ciphertext>" (base64 parts).
+model RouterCredential {
+  routerId     String   @id @db.Uuid
+  router       Router   @relation(fields: [routerId], references: [id], onDelete: Cascade)
+  username     String
+  passwordEnc  String
+  keyVersion   Int      @default(1)
+  rotatedAt    DateTime @default(now())
+
+  @@map("router_credentials")
+}
+
+// ─────────────────────────────── Backups ───────────────────────────────
+
+enum BackupType {
+  EXPORT // text /export (diffable)
+  BINARY // .backup file saved on the router
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+model Backup {
+  id          String     @id @default(uuid()) @db.Uuid
+  routerId    String     @db.Uuid
+  router      Router     @relation(fields: [routerId], references: [id], onDelete: Cascade)
+  type        BackupType @default(EXPORT)
+  status      JobStatus  @default(PENDING)
+  content     String?    // /export output
+  fileName    String?    // for BINARY, the file stored on the router
+  sha256      String?
+  sizeBytes   Int?
+  error       String?
+  createdById String?    @db.Uuid
+  createdBy   User?      @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now())
+  finishedAt  DateTime?
+
+  @@index([routerId, createdAt])
+  @@map("backups")
+}
+
+// ─────────────────────────────── Audit ───────────────────────────────
+
+enum AuditResult {
+  SUCCESS
+  FAILURE
+  DENIED
+}
+
+model AuditLog {
+  id         String      @id @default(uuid()) @db.Uuid
+  userId     String?     @db.Uuid
+  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  username   String? // denormalised so the log survives user deletion
+  action     String // e.g. FIREWALL_RULE_DELETE
+  routerId   String?     @db.Uuid
+  router     Router?     @relation(fields: [routerId], references: [id], onDelete: SetNull)
+  targetType String? // e.g. firewall.filter
+  targetId   String? // e.g. *1A
+  before     Json?
+  after      Json?
+  result     AuditResult
+  error      String?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  @@index([createdAt])
+  @@index([routerId, createdAt])
+  @@index([userId, createdAt])
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────── Monitoring & alerts ───────────────────────────────
+
+// Short-term history for dashboard sparklines. Long-term metrics belong in Prometheus.
+model MetricSample {
+  id          BigInt   @id @default(autoincrement())
+  routerId    String   @db.Uuid
+  router      Router   @relation(fields: [routerId], references: [id], onDelete: Cascade)
+  cpuLoad     Int?
+  memUsed     BigInt?
+  memTotal    BigInt?
+  uptimeSec   Int?
+  temperature Float?
+  rxBps       BigInt?
+  txBps       BigInt?
+  createdAt   DateTime @default(now())
+
+  @@index([routerId, createdAt])
+  @@map("metric_samples")
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AlertState {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model Alert {
+  id             String        @id @default(uuid()) @db.Uuid
+  routerId       String?       @db.Uuid
+  router         Router?       @relation(fields: [routerId], references: [id], onDelete: Cascade)
+  type           String // router.offline, cpu.high, interface.down ...
+  severity       AlertSeverity
+  state          AlertState    @default(OPEN)
+  message        String
+  // Deduplication key: one OPEN alert per (router, type, subject).
+  fingerprint    String
+  acknowledgedBy String?       @db.Uuid
+  createdAt      DateTime      @default(now())
+  resolvedAt     DateTime?
+
+  @@index([state, createdAt])
+  @@index([fingerprint, state])
+  @@map("alerts")
+}
+
+// ─────────────────────────────── Automation (Phase 3) ───────────────────────────────
+
+model AutomationRule {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  enabled   Boolean  @default(true)
+  trigger   Json // { "type": "cron", "expr": "0 3 * * *" } | { "type": "event", "event": "interface.down" }
+  condition Json? // { "field": "interface", "op": "eq", "value": "ether1" }
+  actions   Json // [{ "type": "backup.all" }, { "type": "telegram.notify" }]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("automation_rules")
+}
