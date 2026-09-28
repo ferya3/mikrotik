@@ -141,6 +141,7 @@ model Router {
   auditLogs      AuditLog[]
   alerts         Alert[]
   metrics        MetricSample[]
+  clientUsage    ClientUsageDaily[]
 
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -292,4 +293,24 @@ model AutomationRule {
   updatedAt DateTime @updatedAt
 
   @@map("automation_rules")
+}
+
+// ─────────────────────────────── Network clients (end users) ───────────────────────────────
+
+// Daily traffic per client, accumulated by the poller from RouterOS counters
+// (simple-queue bytes for IP clients, the dynamic <pppoe-user> interface for PPP sessions).
+// clientKey is "ip:<address>" or "ppp:<username>". day is the UTC calendar day.
+model ClientUsageDaily {
+  routerId      String   @db.Uuid
+  router        Router   @relation(fields: [routerId], references: [id], onDelete: Cascade)
+  clientKey     String
+  day           DateTime @db.Date
+  downloadBytes BigInt   @default(0)
+  uploadBytes   BigInt   @default(0)
+  label         String? // last known host name / PPP user, for reports
+  updatedAt     DateTime @updatedAt
+
+  @@id([routerId, clientKey, day])
+  @@index([routerId, day])
+  @@map("client_usage_daily")
 }

@@ -16,6 +16,9 @@
 **Phase 1 — هسته ✅**
 ورود + 2FA (TOTP) · کاربران و ۵ نقش سیستمی · مدیریت روتر (REST v7 / API 8728-8729 / TLS) · Interface · IP Address · Route · DHCP (server, lease, make-static) · Firewall filter/NAT (با ترتیب و move) · Address list · PPP (secret, active, disconnect) · Simple queue · Log · Reboot · Backup
 
+**کاربران شبکه و مصرف اینترنت ✅**
+فهرست همه‌ی دستگاه‌ها و کاربران (DHCP، PPP، Hotspot، IP ثابت) مرتب بر اساس بیشترین دانلود لحظه‌ای · مصرف امروز و گزارش ۱/۷/۳۰/۹۰ روزه برای هر کاربر · **محدود کردن سرعت** با یک کلیک (صف ساده یا rate-limit برای PPP) · **مسدود کردن** موقت یا دائم (address-list + قطع اتصال‌های باز، یا غیرفعال کردن حساب PPP) · ثبت همه در Audit Log — جزئیات در [docs/mikrotik-api.md](docs/mikrotik-api.md#کاربران-شبکه-clients--مصرف-محدودسازی-مسدودسازی)
+
 **Phase 2 — مانیتورینگ ✅**
 CPU / RAM / دما / uptime / ترافیک هر interface / کاربران PPP فعال · WebSocket لحظه‌ای · هشدار (offline، رمز رد شده، CPU بالا، قطع لینک) با dedupe · Telegram · `/api/metrics` برای Prometheus + Grafana
 

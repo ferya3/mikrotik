@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { BackupsModule } from './backups/backups.module';
+import { ClientsModule } from './clients/clients.module';
 import { Public } from './common/auth/decorators';
 import { AuthGuard, CsrfGuard, PermissionsGuard } from './common/auth/guards';
 import { CryptoModule } from './common/crypto/crypto.module';
@@ -58,6 +59,7 @@ function redisConnection() {
     MikrotikModule,
     RoutersModule,
     NetworkModule,
+    ClientsModule,
     MonitoringModule,
     BackupsModule,
   ],

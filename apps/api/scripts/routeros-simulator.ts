@@ -21,10 +21,10 @@ let seq = 0x10;
 const nextId = () => `*${(seq++).toString(16).toUpperCase()}`;
 
 const menus: Record<string, Row[]> = {
-  '/interface': ['ether1', 'ether2', 'ether3', 'sfp-sfpplus1', 'bridge'].map((name, i) => ({
+  '/interface': ['ether1', 'ether2', 'ether3', 'sfp-sfpplus1', 'bridge', '<pppoe-user1>'].map((name, i) => ({
     '.id': `*${i + 1}`,
     name,
-    type: name === 'bridge' ? 'bridge' : name.startsWith('sfp') ? 'ether' : 'ether',
+    type: name === 'bridge' ? 'bridge' : name.startsWith('<pppoe') ? 'pppoe-in' : 'ether',
     mtu: '1500',
     running: name === 'ether3' ? 'false' : 'true',
     disabled: 'false',
@@ -44,11 +44,31 @@ const menus: Record<string, Row[]> = {
   '/ip/dhcp-server/network': [{ '.id': '*1', address: '192.168.88.0/24', gateway: '192.168.88.1', 'dns-server': '192.168.88.1' }],
   '/ip/dhcp-server/lease': [
     { '.id': '*1', address: '192.168.88.10', 'mac-address': 'AA:BB:CC:00:11:22', 'host-name': 'laptop', server: 'dhcp1', status: 'bound', dynamic: 'true', disabled: 'false' },
+    { '.id': '*2', address: '192.168.88.23', 'mac-address': 'AA:BB:CC:00:11:23', 'host-name': 'torrent-box', server: 'dhcp1', status: 'bound', dynamic: 'true', disabled: 'false' },
+    { '.id': '*3', address: '192.168.88.31', 'mac-address': 'AA:BB:CC:00:11:31', 'host-name': 'phone-sara', server: 'dhcp1', status: 'bound', dynamic: 'true', disabled: 'false' },
   ],
+  '/ip/arp': [
+    { '.id': '*1', address: '192.168.88.10', 'mac-address': 'AA:BB:CC:00:11:22', interface: 'bridge', dynamic: 'true', complete: 'true' },
+    { '.id': '*2', address: '192.168.88.23', 'mac-address': 'AA:BB:CC:00:11:23', interface: 'bridge', dynamic: 'true', complete: 'true' },
+    { '.id': '*3', address: '192.168.88.31', 'mac-address': 'AA:BB:CC:00:11:31', interface: 'bridge', dynamic: 'true', complete: 'true' },
+    { '.id': '*4', address: '192.168.88.40', 'mac-address': 'AA:BB:CC:00:11:40', interface: 'bridge', dynamic: 'true', complete: 'true' },
+    { '.id': '*5', address: '10.0.0.254', 'mac-address': 'DE:AD:BE:EF:00:01', interface: 'ether1', dynamic: 'true', complete: 'true' },
+  ],
+  '/ip/hotspot/active': [],
+  '/ip/firewall/connection': Array.from({ length: 12 }, (_, i) => ({
+    '.id': `*C${i}`,
+    'src-address': `192.168.88.${i < 8 ? 23 : 10}:${40000 + i}`,
+    'dst-address': `203.0.113.${i}:443`,
+    protocol: 'tcp',
+  })),
   '/ppp/secret': [{ '.id': '*1', name: 'user1', password: 'secret', service: 'pppoe', profile: 'default', disabled: 'false' }],
   '/ppp/active': [{ '.id': '*1', name: 'user1', service: 'pppoe', address: '10.10.0.2', uptime: '1h2m3s', 'caller-id': 'AA:BB:CC:00:00:01' }],
   '/ppp/profile': [{ '.id': '*0', name: 'default' }],
-  '/queue/simple': [{ '.id': '*1', name: 'guest', target: '192.168.88.0/24', 'max-limit': '10M/20M', disabled: 'false' }],
+  '/queue/simple': [
+    { '.id': '*2', name: 'nms-192.168.88.10', target: '192.168.88.10/32', 'max-limit': '0/0', disabled: 'false', dynamic: 'false', rate: '0/0', bytes: '0/0' },
+    { '.id': '*3', name: 'torrent', target: '192.168.88.23/32', 'max-limit': '0/0', disabled: 'false', dynamic: 'false', rate: '0/0', bytes: '0/0' },
+    { '.id': '*1', name: 'guest', target: '192.168.88.0/24', 'max-limit': '10M/20M', disabled: 'false', dynamic: 'false', rate: '0/0', bytes: '0/0' },
+  ],
   '/log': Array.from({ length: 20 }, (_, i) => ({
     '.id': `*${i + 1}`,
     time: `09:${String(i).padStart(2, '0')}:00`,
@@ -80,6 +100,34 @@ function singleton(path: string): Row | null {
       return { routerboard: 'true', model: 'CCR2004-1G-12S+2XS', 'serial-number': 'SIM0000001' };
     default:
       return null;
+  }
+}
+
+/** Per-host traffic profile (bps down/up) — 192.168.88.23 is the heavy downloader. */
+const HOST_PROFILE: Record<string, [number, number]> = {
+  '192.168.88.10': [3_000_000, 400_000],
+  '192.168.88.23': [85_000_000, 2_000_000],
+};
+let lastQueueTick = Date.now();
+
+function tickQueues() {
+  const now = Date.now();
+  const dt = Math.max(0.001, (now - lastQueueTick) / 1000);
+  lastQueueTick = now;
+  for (const q of menus['/queue/simple']) {
+    const host = q.target?.replace(/\/32$/, '');
+    const [down, up] = HOST_PROFILE[host] ?? [0, 0];
+    const [maxUp, maxDown] = (q['max-limit'] ?? '0/0').split('/').map((v) => {
+      const m = /^(\d+(?:\.\d+)?)([kMG]?)$/.exec(v);
+      return m ? Number(m[1]) * ({ '': 1, k: 1e3, M: 1e6, G: 1e9 }[m[2]] ?? 1) : 0;
+    });
+    const blocked = menus['/ip/firewall/address-list'].some((e) => e.list === 'nms-blocked' && e.address === host);
+    const jitter = () => 0.8 + Math.random() * 0.4;
+    const d = blocked ? 0 : Math.min(down * jitter(), maxDown || Infinity);
+    const u = blocked ? 0 : Math.min(up * jitter(), maxUp || Infinity);
+    const [bu, bd] = (q.bytes ?? '0/0').split('/').map(Number);
+    q.rate = `${Math.round(u)}/${Math.round(d)}`;
+    q.bytes = `${Math.round(bu + (u * dt) / 8)}/${Math.round(bd + (d * dt) / 8)}`;
   }
 }
 
@@ -129,6 +177,7 @@ createServer(async (req, res) => {
   const rows = menus[path];
   if (!rows) return send(res, 400, { error: 400, message: 'Bad Request', detail: 'no such command' });
   if (path === '/interface') tickCounters();
+  if (path === '/queue/simple') tickQueues();
 
   switch (req.method) {
     case 'GET': {

@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { AlertSeverity, RouterStatus } from '@prisma/client';
+import { ClientUsageService } from '../clients/client-usage.service';
 import { APP_CONFIG, AppConfig } from '../config/env';
 import { RouterAuthError } from '../mikrotik/errors';
 import { MikrotikService } from '../mikrotik/mikrotik.service';
@@ -7,33 +8,7 @@ import { parseRosDuration } from '../mikrotik/routeros.client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.module';
 import { AlertsService, EVENTS_CHANNEL } from './alerts.service';
-
-export interface InterfaceLive {
-  name: string;
-  type: string;
-  running: boolean;
-  disabled: boolean;
-  rxBps: number;
-  txBps: number;
-}
-
-export interface RouterLive {
-  routerId: string;
-  status: RouterStatus;
-  ts: number;
-  error?: string;
-  cpuLoad?: number;
-  memUsed?: number;
-  memTotal?: number;
-  uptime?: string;
-  temperature?: number | null;
-  rxBps?: number;
-  txBps?: number;
-  pppActive?: number;
-  interfaces?: InterfaceLive[];
-}
-
-export const liveKey = (routerId: string) => `nms:live:${routerId}`;
+import { InterfaceLive, liveKey, RouterLive } from './live';
 
 /** Physical ports: counted in router throughput and watched for link-down alerts. */
 const PHYSICAL = /^(ether|sfp|sfp-sfpplus|sfp28|qsfpplus|qsfp28|combo|wlan|wifi|lte|5g)/;
@@ -64,6 +39,7 @@ export class PollerService implements OnApplicationBootstrap, OnModuleDestroy {
     private readonly mikrotik: MikrotikService,
     private readonly redis: RedisService,
     private readonly alerts: AlertsService,
+    private readonly clientUsage: ClientUsageService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -102,12 +78,17 @@ export class PollerService implements OnApplicationBootstrap, OnModuleDestroy {
     let live: RouterLive;
     try {
       live = await this.mikrotik.withClient(r.id, async (c) => {
-        const [res, ifaces, temperature, ppp] = await Promise.all([
+        const [res, ifaces, temperature, ppp, queues] = await Promise.all([
           c.getSystemResource(),
           c.listInterfaces(),
           c.getTemperature(),
-          c.adapter.print('/ppp/active', { proplist: ['.id'] }).catch(() => []),
+          c.adapter.print('/ppp/active', { proplist: ['.id', 'name', 'service'] }).catch(() => []),
+          c.adapter
+            .print('/queue/simple', { proplist: ['.id', 'target', 'bytes', 'dynamic', 'disabled', 'comment'] })
+            .catch(() => []),
         ]);
+        // Per-client usage accounting (daily totals) from the same poll.
+        await this.clientUsage.ingest(r.id, queues, ppp, ifaces);
         return this.buildLive(r.id, now, res, ifaces, temperature, ppp.length);
       });
     } catch (e) {

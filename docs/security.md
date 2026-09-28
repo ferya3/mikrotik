@@ -47,6 +47,8 @@ Permissionها در [`permissions.ts`](../apps/api/src/common/rbac/permissions.t
 | Firewall filter / NAT | ✓ | ✓ | ✗ | ✗ | ✗ |
 | Address list (فایروال محدود) | ✓ | ✓ | ✓ | ✗ | ✗ |
 | DHCP / PPP / Queue | ✓ | ✓ | ✓ | ✗ | ✗ |
+| مشاهده‌ی کاربران شبکه و مصرف | ✓ | ✓ | ✓ | ✓ | ✓ |
+| محدود / مسدود کردن کاربر شبکه | ✓ | ✓ | ✓ | ✗ | ✗ |
 | افزودن/ویرایش روتر | ✓ | ✓ | ✗ | ✗ | ✗ |
 | حذف روتر | ✓ | ✓ | ✗ | ✗ | ✗ |
 | Reboot | ✓ | ✓ | ✗ | ✗ | ✗ |

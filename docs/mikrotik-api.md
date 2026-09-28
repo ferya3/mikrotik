@@ -76,6 +76,45 @@ RouterAdapter    (print / get / add / set / remove / command)
 
 در `PATCH` مقدار `null` یعنی **unset** (بازگشت به پیش‌فرض RouterOS)، مثلاً `{"srcAddress": null}`.
 
+### کاربران شبکه (Clients) — مصرف، محدودسازی، مسدودسازی
+| Method | Path | Permission |
+|---|---|---|
+| GET | `/routers/:id/clients` | `client:read` |
+| GET | `/routers/:id/clients/usage?days=30` | `client:read` |
+| GET | `/routers/:id/clients/usage/history?key=ip:192.168.88.10&days=30` | `client:read` |
+| POST | `/routers/:id/clients/limit` `{address \| pppUser, download, upload, reconnect?}` | `client:write` |
+| POST | `/routers/:id/clients/unlimit` `{address \| pppUser, reconnect?}` | `client:write` |
+| POST | `/routers/:id/clients/block` `{address \| pppUser, reason?, duration?}` | `client:write` |
+| POST | `/routers/:id/clients/unblock` `{address \| pppUser}` | `client:write` |
+| POST | `/routers/:id/clients/track` `{addresses: [...]}` | `client:write` |
+
+**فهرست کاربران** از ادغام این جدول‌ها ساخته می‌شود: `/ip/dhcp-server/lease`، `/ip/arp` (فقط روی interfaceهایی که DHCP server دارند، تا gateway بالادستی کاربر حساب نشود)، `/ppp/active` + `/ppp/secret`، `/ip/hotspot/active`، `/queue/simple` و address-list `nms-blocked`. کاربران PPP با نام کاربری کلید می‌خورند (IP هر session عوض می‌شود)، بقیه با IP.
+
+**مصرف لحظه‌ای:**
+- کلاینت IP: فیلدهای `rate` و `bytes` صف ساده‌ای که فقط همان IP را هدف گرفته (`upload/download`). دستگاه بدون صف نرخ ندارد؛ دکمه‌ی «Start measuring usage» برایش صف بدون محدودیت `nms-<ip>` با `0/0` می‌سازد.
+- کلاینت PPP: interface پویای `<pppoe-user>` (rx = آپلود کاربر، tx = دانلود) یا صف پویای PPP اگر profile محدودیت داشته باشد.
+
+**مصرف روزانه:** poller در هر دور شمارنده‌های بایت همین منابع را می‌خواند و **اختلاف** را در `client_usage_daily` جمع می‌زند (روز UTC). شمارنده‌ای که عقب برود (reboot، اتصال دوباره‌ی PPP، ساخت دوباره‌ی صف) reset حساب می‌شود و ترافیک از دست نمی‌رود.
+
+**محدودسازی:**
+| نوع کاربر | کاری که روی روتر انجام می‌شود |
+|---|---|
+| IP (DHCP/hotspot/static) | اگر صفی فقط برای این IP هست، `max-limit` آن تنظیم می‌شود؛ وگرنه صف `nms-<ip>` با `place-before` بالاتر از همه‌ی صف‌های ثابت ساخته می‌شود (RouterOS اولین صف منطبق را اعمال می‌کند، پس صف یک subnet کلی بالاتر از آن اثری ندارد). فوری. |
+| PPP | `rate-limit` روی PPP secret. RouterOS آن را هنگام **اتصال بعدی** اعمال می‌کند؛ با `reconnect: true` session قطع می‌شود تا فوراً اعمال شود. |
+
+حذف محدودیت، صف را حذف نمی‌کند و `max-limit=0/0` می‌گذارد تا شمارش مصرف ادامه پیدا کند.
+
+**مسدودسازی:**
+| نوع کاربر | کاری که روی روتر انجام می‌شود |
+|---|---|
+| IP | بار اول دو قانون `forward drop` با `src-address-list=nms-blocked` و `dst-address-list=nms-blocked` (کامنت `nms:block-src/dst`) بالای فیلتر ساخته می‌شود. سپس IP به `nms-blocked` اضافه می‌شود (با `timeout` اختیاری مثل `1h`) و اتصال‌های باز آن از `/ip/firewall/connection` حذف می‌شوند؛ چون اتصال‌های fasttrack شده از فایروال عبور نمی‌کنند و بدون این کار دانلود جاری ادامه پیدا می‌کرد. |
+| PPP | PPP secret غیرفعال و session قطع می‌شود؛ تا رفع مسدودیت نمی‌تواند وصل شود. |
+
+محدودیت‌ها و نکات:
+- کاربر IP می‌تواند IP خود را دستی عوض کند. برای شبکه‌های حساس، lease را static کنید و روی interface حالت `arp=reply-only` بگذارید.
+- کاربران PPP که از RADIUS احراز می‌شوند secret محلی ندارند و باید روی RADIUS مدیریت شوند (API پیام روشن برمی‌گرداند).
+- دستگاه مسدود هنوز به خود روتر (DNS، Winbox) دسترسی دارد؛ فقط عبور از روتر (اینترنت) بسته است.
+
 ### مانیتورینگ و بکاپ
 | Method | Path | Permission |
 |---|---|---|

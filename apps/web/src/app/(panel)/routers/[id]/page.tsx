@@ -21,10 +21,12 @@ import type { RouterLive, RouterRow } from '@/lib/types';
 import { formatBps, formatBytes } from '@/lib/utils';
 import { RouterForm } from '../router-form';
 import { BackupsTab } from './backups-tab';
+import { ClientsTab } from './clients-tab';
 import { LogsTab } from './logs-tab';
 
 type TabKey =
   | 'overview'
+  | 'clients'
   | 'interfaces'
   | 'ip'
   | 'firewall'
@@ -38,6 +40,7 @@ type TabKey =
 
 const TABS: { value: TabKey; label: string; perm: string }[] = [
   { value: 'overview', label: 'Overview', perm: 'router:read' },
+  { value: 'clients', label: 'Clients & Usage', perm: 'client:read' },
   { value: 'interfaces', label: 'Interfaces', perm: 'interface:read' },
   { value: 'ip', label: 'IP & Routes', perm: 'ip:read' },
   { value: 'firewall', label: 'Firewall', perm: 'firewall:read' },
@@ -324,6 +327,7 @@ export default function RouterPage() {
       </div>
 
       {tab === 'overview' && <Overview router={router} />}
+      {tab === 'clients' && <ClientsTab routerId={id} />}
       {tab === 'interfaces' && <ResourceTab routerId={id} def={RESOURCE_DEFS.interfaces} />}
       {tab === 'ip' && (
         <div className="space-y-4">

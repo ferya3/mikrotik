@@ -22,7 +22,7 @@ import { APP_CONFIG, AppConfig } from '../config/env';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.module';
 import { AlertsService } from './alerts.service';
-import { liveKey, RouterLive } from './poller.service';
+import { liveKey, RouterLive } from './live';
 
 class HistoryQuery {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(168) hours = 1;

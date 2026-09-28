@@ -22,6 +22,10 @@ export const PERMISSIONS = {
   QUEUE_WRITE: 'queue:write',
   LOG_READ: 'log:read',
   SYSTEM_REBOOT: 'system:reboot',
+  /** Network clients (end users): list, live usage, usage history. */
+  CLIENT_READ: 'client:read',
+  /** Limit bandwidth / block / unblock network clients. */
+  CLIENT_WRITE: 'client:write',
   BACKUP_READ: 'backup:read',
   BACKUP_CREATE: 'backup:create',
   MONITORING_READ: 'monitoring:read',
@@ -50,6 +54,7 @@ const READ_ONLY: Permission[] = [
   P.LOG_READ,
   P.MONITORING_READ,
   P.ALERT_READ,
+  P.CLIENT_READ,
 ];
 
 /** Default role matrix (seeded; system roles). Mirrors the table in docs/security.md. */
@@ -72,6 +77,7 @@ export const DEFAULT_ROLES: Record<string, { description: string; permissions: P
       P.DHCP_WRITE,
       P.PPP_WRITE,
       P.QUEUE_WRITE,
+      P.CLIENT_WRITE,
       P.BACKUP_READ,
       P.BACKUP_CREATE,
       P.ALERT_ACK,
@@ -79,7 +85,15 @@ export const DEFAULT_ROLES: Record<string, { description: string; permissions: P
   },
   monitoring: {
     description: 'NOC / monitoring staff: dashboards, alerts and logs',
-    permissions: [P.ROUTER_READ, P.INTERFACE_READ, P.LOG_READ, P.MONITORING_READ, P.ALERT_READ, P.ALERT_ACK],
+    permissions: [
+      P.ROUTER_READ,
+      P.INTERFACE_READ,
+      P.LOG_READ,
+      P.MONITORING_READ,
+      P.ALERT_READ,
+      P.ALERT_ACK,
+      P.CLIENT_READ,
+    ],
   },
   read_only: {
     description: 'View-only access to routers and their configuration',
