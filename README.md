@@ -54,6 +54,18 @@ NEXT_PUBLIC_API_ORIGIN=http://localhost:4000 npm run dev    # پنل روی :300
 
 وارد `http://localhost:3000` شوید و روتری با host `127.0.0.1`، پورت `8080`، اتصال REST، TLS خاموش و کاربر `admin/admin` اضافه کنید.
 
+## نصب سریع روی Windows
+
+1. [Docker Desktop](https://www.docker.com/products/docker-desktop/) و [Git for Windows](https://git-scm.com/download/win) را نصب کنید و Docker Desktop را باز کنید.
+2. در cmd:
+   ```bat
+   git clone https://github.com/ferya3/mikrotik.git
+   cd mikrotik
+   git checkout claude/peaceful-wright-6svrml
+   setup-windows.cmd
+   ```
+3. اسکریپت `.env` با رمزهای تصادفی، گواهی HTTPS، اجرای کانتینرها و کاربر `admin` را می‌سازد (رمز را از شما می‌پرسد) و آدرس پنل را نشان می‌دهد. اگر 80/443 اشغال باشد خودش 8080/8443 را انتخاب می‌کند. اجرای دوباره امن است.
+
 ## اجرا داخل شبکه‌ی محلی (کنار MikroTik)
 
 یک کامپیوتر (یا سرور) داخل همان LAN کافی است؛ پنل از بقیه‌ی سیستم‌های شبکه با `https://<IP-آن-کامپیوتر>` باز می‌شود.
