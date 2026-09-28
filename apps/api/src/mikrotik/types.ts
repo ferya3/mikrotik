@@ -54,7 +54,7 @@ export interface RouterAdapter {
   close(): Promise<void>;
 }
 
-export const ROS_COMMANDS = ['move', 'reboot', 'make-static', 'enable', 'disable'] as const;
+export const ROS_COMMANDS = ['move', 'reboot', 'make-static', 'unset'] as const;
 export type RosCommand = (typeof ROS_COMMANDS)[number];
 
 export interface RouterConnectionInfo {

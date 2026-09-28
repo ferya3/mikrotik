@@ -146,7 +146,8 @@ createServer(async (req, res) => {
     case 'PUT': {
       const body = await readBody(req);
       const { 'place-before': before, ...props } = body;
-      const row = { '.id': nextId(), disabled: 'false', ...props };
+      const row: Row = { '.id': nextId(), disabled: 'false' };
+      for (const [k, v] of Object.entries(props)) row[k] = v === 'yes' ? 'true' : v === 'no' ? 'false' : v;
       const idx = before ? rows.findIndex((r) => r['.id'] === before) : -1;
       if (idx >= 0) rows.splice(idx, 0, row);
       else rows.push(row);
@@ -173,6 +174,11 @@ createServer(async (req, res) => {
         const [row] = rows.splice(from, 1);
         const to = rows.findIndex((r) => r['.id'] === body.destination);
         rows.splice(to < 0 ? rows.length : to, 0, row);
+        return send(res, 200, []);
+      }
+      if (command === 'unset') {
+        const row = rows.find((r) => r['.id'] === body.numbers);
+        if (row) delete row[body['value-name']];
         return send(res, 200, []);
       }
       if (command === 'make-static') {

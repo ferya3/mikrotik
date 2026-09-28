@@ -117,6 +117,11 @@ export class RouterOsClient {
     await this.adapter.command(path, 'move', { numbers: id, destination: beforeId });
   }
 
+  /** Clears a property back to its default (e.g. removes src-address from a rule). */
+  async unset(path: MenuPath, id: string, property: string): Promise<void> {
+    await this.adapter.command(path, 'unset', { numbers: id, 'value-name': property });
+  }
+
   async makeStaticLease(id: string): Promise<void> {
     await this.adapter.command('/ip/dhcp-server/lease', 'make-static', { numbers: id });
   }

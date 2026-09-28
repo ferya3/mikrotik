@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: mikrotik-nms
+    metrics_path: /api/metrics
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/metrics_token   # same value as METRICS_TOKEN in .env
+    static_configs:
+      - targets: ['api:4000']

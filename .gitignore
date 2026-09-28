@@ -10,3 +10,5 @@ coverage/
 *.tsbuildinfo
 .DS_Store
 dump.rdb
+deploy/prometheus/metrics_token
+deploy/nginx/certs/*.pem

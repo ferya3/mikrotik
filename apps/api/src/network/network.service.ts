@@ -4,7 +4,7 @@ import type { AuthUser, RequestMeta } from '../common/auth/decorators';
 import { MikrotikService } from '../mikrotik/mikrotik.service';
 import type { RosProps, RosRecord } from '../mikrotik/types';
 import { HIDDEN_PROPS, ResourceSpec } from './resources';
-import { toRosProps } from './ros-props';
+import { camelToKebab, toRosProps } from './ros-props';
 
 interface Actor {
   user: AuthUser;
@@ -47,8 +47,12 @@ export class NetworkService {
     );
   }
 
+  /** Fields set to `null` in the DTO are unset (reset to the RouterOS default). */
   async update(routerId: string, spec: ResourceSpec, id: string, dto: object, actor: Actor): Promise<RosRecord> {
     const props = toRosProps(dto);
+    const unset = Object.entries(dto)
+      .filter(([, v]) => v === null)
+      .map(([k]) => camelToKebab(k));
     return this.mikrotik.withClient(routerId, async (c) => {
       const before = this.sanitize(spec, await c.get(spec.path, id));
       return this.audit.track(
@@ -62,7 +66,8 @@ export class NetworkService {
           after: (item: RosRecord) => item,
         },
         async () => {
-          await c.set(spec.path, id, props);
+          if (Object.keys(props).length) await c.set(spec.path, id, props);
+          for (const name of unset) await c.unset(spec.path, id, name);
           return this.sanitize(spec, await c.get(spec.path, id));
         },
       );
