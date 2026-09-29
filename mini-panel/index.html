@@ -66,6 +66,8 @@
   .pt input:focus, .pt select:focus, .pt button:focus-visible { outline: 2px solid var(--series); outline-offset: 1px; }
   .pt button { background: var(--series); border-color: var(--series); color: #fff; font-weight: 500; cursor: pointer; padding: 7px 16px; }
   .pt button:disabled { opacity: .6; cursor: progress; }
+  .toggle { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--muted); cursor: pointer; }
+  .toggle input { accent-color: var(--series); width: 16px; height: 16px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .chips button { font: inherit; font-size: 12px; direction: ltr; border: 1px solid var(--border); background: transparent; color: var(--muted); border-radius: 999px; padding: 2px 10px; cursor: pointer; }
   .chips button:hover { color: var(--text); border-color: var(--muted); }
@@ -147,6 +149,7 @@
         <span>حجم دانلود کل: <b class="ltr" id="volDown">—</b></span>
         <span>حجم آپلود کل: <b class="ltr" id="volUp">—</b></span>
       </div>
+      <label class="toggle"><input type="checkbox" id="connsOn"> سرعت و حجم دقیق از جدول اتصال‌ها (در شبکه‌ی شلوغ برای CPU روتر سنگین است)</label>
       <div class="err" id="usersErr"></div>
       <div class="users">
         <table>
@@ -191,7 +194,7 @@
 <script>
 'use strict';
 // Poll intervals: light on the router CPU, and paused while the tab is hidden.
-const EVERY = { system: 5000, ping: 10000, users: 15000, accounts: 30000 };
+const EVERY = { system: 5000, ping: 10000, users: 30000, accounts: 60000 };
 const HISTORY_MS = 10 * 60 * 1000;
 const $ = (id) => document.getElementById(id);
 
@@ -525,7 +528,7 @@ function mergeUsers(d) {
 
 async function loadUsers() {
   try {
-    const { list, hasRates, fromConns } = mergeUsers(await fetchJson('/api/users'));
+    const { list, hasRates, fromConns } = mergeUsers(await fetchJson(`/api/users?conns=${connsOn() ? 1 : 0}`));
     list.sort((a, b) => (b.down || 0) - (a.down || 0) || (b.volDown || 0) - (a.volDown || 0) || String(a.name).localeCompare(String(b.name)));
     const active = list.filter((u) => (u.down || 0) + (u.up || 0) > 8000).length;
     $('usersCount').innerHTML = `${list.length}<small> متصل</small>`;
@@ -570,6 +573,17 @@ async function loadUsers() {
     setState($('usersState'), 'idle', 'نامعلوم');
   }
 }
+
+// Reading the connection table is optional (remembered per browser); default on.
+function connsOn() {
+  return $('connsOn').checked;
+}
+try { $('connsOn').checked = localStorage.getItem('mini.conns') !== '0'; } catch { $('connsOn').checked = true; }
+$('connsOn').addEventListener('change', () => {
+  try { localStorage.setItem('mini.conns', connsOn() ? '1' : '0'); } catch { /* storage unavailable */ }
+  lastBytes = null; // new baseline when switched back on
+  loadUsers();
+});
 
 // ---------- Router accounts (who can log in to the router, and who is logged in now)
 function isAdminPolicy(policy) {

@@ -125,6 +125,12 @@ $routes = @{
         ',"active":' + (Invoke-Ros 'GET' '/user/active?.proplist=name,address,via,when,group' $null) + '}'
     }
     '/api/users' = {
+        param($ctx)
+        # The connection table can be large; the page can switch it off (?conns=0) to spare the router CPU.
+        $conns = '[]'
+        if ($ctx.Request.QueryString['conns'] -ne '0') {
+            $conns = Get-Optional '/ip/firewall/connection?.proplist=.id,src-address,orig-bytes,repl-bytes,orig-rate,repl-rate'
+        }
         '{"leases":' + (Invoke-Ros 'GET' '/ip/dhcp-server/lease?.proplist=address,mac-address,host-name,comment,status,last-seen' $null) +
         ',"dhcpServers":' + (Get-Optional '/ip/dhcp-server?.proplist=name,interface') +
         ',"arp":' + (Invoke-Ros 'GET' '/ip/arp?.proplist=address,mac-address,interface,comment,complete' $null) +
@@ -132,7 +138,7 @@ $routes = @{
         ',"kid":' + (Get-Optional '/ip/kid-control/device?.proplist=name,mac-address,ip-address,rate-down,rate-up,bytes-down,bytes-up') +
         ',"ppp":' + (Get-Optional '/ppp/active?.proplist=name,address,service,uptime') +
         ',"hotspot":' + (Get-Optional '/ip/hotspot/active?.proplist=user,address,mac-address,uptime') +
-        ',"conns":' + (Get-Optional '/ip/firewall/connection?.proplist=.id,src-address,orig-bytes,repl-bytes,orig-rate,repl-rate') + '}'
+        ',"conns":' + $conns + '}'
     }
 }
 
