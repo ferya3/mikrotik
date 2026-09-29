@@ -131,7 +131,8 @@ $routes = @{
         ',"queues":' + (Invoke-Ros 'GET' '/queue/simple?.proplist=name,target,rate,bytes,disabled' $null) +
         ',"kid":' + (Get-Optional '/ip/kid-control/device?.proplist=name,mac-address,ip-address,rate-down,rate-up,bytes-down,bytes-up') +
         ',"ppp":' + (Get-Optional '/ppp/active?.proplist=name,address,service,uptime') +
-        ',"hotspot":' + (Get-Optional '/ip/hotspot/active?.proplist=user,address,mac-address,uptime') + '}'
+        ',"hotspot":' + (Get-Optional '/ip/hotspot/active?.proplist=user,address,mac-address,uptime') +
+        ',"conns":' + (Get-Optional '/ip/firewall/connection?.proplist=.id,src-address,orig-bytes,repl-bytes,orig-rate,repl-rate') + '}'
     }
 }
 

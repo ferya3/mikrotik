@@ -348,6 +348,36 @@ function sparkline(box, points, { max, format, label }) {
 
 // ---------- state
 const hist = { cpu: [], rtt: [] };
+
+// ---------- per-device volume from connection byte counters (today, while the panel is open)
+// "192.168.4.10:51234" → "192.168.4.10"
+const connIp = (a) => String(a || '').replace(/:\d+$/, '');
+const VOL_KEY = 'mini.volume';
+let vol = { day: '', ips: {} };
+try { vol = JSON.parse(localStorage.getItem(VOL_KEY)) || vol; } catch { /* storage unavailable */ }
+let lastBytes = null; // connection id → { o, r } from the previous poll
+
+function accumulate(conns, users) {
+  const day = new Date().toDateString();
+  if (vol.day !== day) vol = { day, ips: {} };
+  const next = new Map();
+  for (const c of conns) {
+    const o = +c['orig-bytes'] || 0;
+    const r = +c['repl-bytes'] || 0;
+    next.set(c['.id'], { o, r });
+    // First poll after opening the page only sets the baseline (those bytes may be counted already).
+    if (!lastBytes) continue;
+    const ip = connIp(c['src-address']);
+    if (!users.has(ip)) continue;
+    const p = lastBytes.get(c['.id']);
+    const v = (vol.ips[ip] ||= { down: 0, up: 0 });
+    v.up += p ? Math.max(0, o - p.o) : o;
+    v.down += p ? Math.max(0, r - p.r) : r;
+  }
+  lastBytes = next;
+  try { localStorage.setItem(VOL_KEY, JSON.stringify(vol)); } catch { /* storage unavailable */ }
+  return vol.ips;
+}
 const push = (arr, v) => {
   const now = Date.now();
   arr.push({ t: now, v });
@@ -470,12 +500,32 @@ function mergeUsers(d) {
     u.volUp = parseBytes(k['bytes-up']);
     hasRates = true;
   }
-  return { list: [...users.values()], hasRates };
+  // Connection tracking: every device, no queues needed, and it includes FastTrack traffic.
+  // Speed = sum of the live rates of the connections a device opened (orig = upload, reply = download).
+  // Volume = bytes counted while this panel is open today (kept in the browser across reloads).
+  let fromConns = false;
+  if (d.conns.length) {
+    fromConns = hasRates = true;
+    for (const u of users.values()) Object.assign(u, { up: 0, down: 0 });
+    const counted = accumulate(d.conns, users);
+    for (const c of d.conns) {
+      const u = users.get(connIp(c['src-address']));
+      if (!u) continue;
+      u.up += parseRate(c['orig-rate']);
+      u.down += parseRate(c['repl-rate']);
+    }
+    for (const u of users.values()) {
+      const v = counted[u.ip];
+      u.volDown = v ? v.down : 0;
+      u.volUp = v ? v.up : 0;
+    }
+  }
+  return { list: [...users.values()], hasRates, fromConns };
 }
 
 async function loadUsers() {
   try {
-    const { list, hasRates } = mergeUsers(await fetchJson('/api/users'));
+    const { list, hasRates, fromConns } = mergeUsers(await fetchJson('/api/users'));
     list.sort((a, b) => (b.down || 0) - (a.down || 0) || (b.volDown || 0) - (a.volDown || 0) || String(a.name).localeCompare(String(b.name)));
     const active = list.filter((u) => (u.down || 0) + (u.up || 0) > 8000).length;
     $('usersCount').innerHTML = `${list.length}<small> متصل</small>`;
@@ -509,7 +559,9 @@ async function loadUsers() {
       tr.append(who, dn, upc, vd, vu);
       body.append(tr);
     }
-    $('usersHint').textContent = hasRates
+    $('usersHint').textContent = fromConns
+      ? 'سرعت از جدول اتصال‌های روتر است. حجم، مصرف امروز از وقتی این پنل باز بوده را نشان می‌دهد (وقتی پنل بسته یا در تب دیگری است، شمرده نمی‌شود).'
+      : hasRates
       ? 'حجم از آخرین صفر شدن شمارنده‌ها حساب می‌شود (ریبوت روتر یا ریست روزانه‌ی صف‌ها). «—» یعنی برای این کاربر صف یا Kid Control نیست.'
       : 'سرعت و حجم هر کاربر فقط برای کسانی دیده می‌شود که Simple Queue دارند (راهنما در README).';
     $('usersErr').textContent = '';
