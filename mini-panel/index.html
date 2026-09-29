@@ -33,7 +33,9 @@
   .dot.on { background: var(--good); }
   .banner { display: none; margin-bottom: 16px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--bad); color: var(--bad); background: color-mix(in srgb, var(--bad) 8%, var(--card)); }
   .grid { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .grid + .grid { margin-top: 16px; }
+  .grid.wide { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  @media (max-width: 900px) { .grid, .grid.wide { grid-template-columns: 1fr; } }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; min-width: 0; }
   .card h2 { font-size: 14px; font-weight: 500; color: var(--muted); margin: 0 0 8px; display: flex; justify-content: space-between; gap: 8px; }
   .hero { font-size: 40px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; direction: ltr; text-align: right; }
@@ -49,7 +51,31 @@
   .chart svg { display: block; width: 100%; height: 90px; }
   .chart .cap { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
   .tip { position: absolute; top: 0; pointer-events: none; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 3px 8px; font-size: 12px; white-space: nowrap; box-shadow: 0 2px 8px rgb(0 0 0 / .12); display: none; direction: ltr; }
-  .users { margin-top: 12px; max-height: 330px; overflow-y: auto; }
+  .users { margin-top: 12px; max-height: 420px; overflow: auto; }
+  .list { margin-top: 12px; display: grid; gap: 6px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; }
+  .row .who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .row .who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag { font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+  .tag.admin { color: var(--warn); border-color: currentColor; }
+  .tag.off { text-decoration: line-through; }
+  .sect { margin: 14px 0 0; font-size: 12px; color: var(--muted); }
+  .pt { display: flex; gap: 8px; margin-top: 4px; }
+  .pt input, .pt select, .pt button { font: inherit; font-size: 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); padding: 7px 10px; min-width: 0; }
+  .pt input { flex: 1; direction: ltr; text-align: left; }
+  .pt input:focus, .pt select:focus, .pt button:focus-visible { outline: 2px solid var(--series); outline-offset: 1px; }
+  .pt button { background: var(--series); border-color: var(--series); color: #fff; font-weight: 500; cursor: pointer; padding: 7px 16px; }
+  .pt button:disabled { opacity: .6; cursor: progress; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chips button { font: inherit; font-size: 12px; direction: ltr; border: 1px solid var(--border); background: transparent; color: var(--muted); border-radius: 999px; padding: 2px 10px; cursor: pointer; }
+  .chips button:hover { color: var(--text); border-color: var(--muted); }
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+  .stat { border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; }
+  .stat span { display: block; font-size: 11px; color: var(--muted); }
+  .stat b { font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+  .strip { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; direction: ltr; }
+  .strip i { width: 14px; height: 14px; border-radius: 4px; background: var(--good); }
+  .strip i.lost { background: var(--bad); }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th { text-align: right; font-weight: 500; color: var(--muted); padding: 4px 6px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--card); }
   td { padding: 5px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -95,21 +121,69 @@
       <div class="chart" id="pingChart"></div>
     </section>
 
+    <section class="card" aria-labelledby="accTitle">
+      <h2><span id="accTitle">حساب‌های روتر</span><span class="state idle" id="accState">—</span></h2>
+      <div class="hero" id="accCount" style="direction: rtl">—</div>
+      <div class="facts">
+        <span>مدیر: <b id="accAdmins">—</b></span>
+        <span>کاربر عادی: <b id="accUsers">—</b></span>
+        <span>غیرفعال: <b id="accDisabled">—</b></span>
+      </div>
+      <div class="err" id="accErr"></div>
+      <p class="sect">الان وارد روتر شده‌اند:</p>
+      <div class="list" id="accActive"></div>
+      <p class="sect">همه‌ی حساب‌ها:</p>
+      <div class="list" id="accList"></div>
+    </section>
+  </div>
+
+  <div class="grid wide">
     <section class="card" aria-labelledby="usersTitle">
-      <h2><span id="usersTitle">کاربران</span><span class="state idle" id="usersState">—</span></h2>
+      <h2><span id="usersTitle">کاربران شبکه</span><span class="state idle" id="usersState">—</span></h2>
       <div class="hero" id="usersCount" style="direction: rtl">—</div>
       <div class="facts">
-        <span>دانلود کل: <b class="ltr" id="totalDown">—</b></span>
-        <span>آپلود کل: <b class="ltr" id="totalUp">—</b></span>
+        <span>سرعت دانلود کل: <b class="ltr" id="totalDown">—</b></span>
+        <span>سرعت آپلود کل: <b class="ltr" id="totalUp">—</b></span>
+        <span>حجم دانلود کل: <b class="ltr" id="volDown">—</b></span>
+        <span>حجم آپلود کل: <b class="ltr" id="volUp">—</b></span>
       </div>
       <div class="err" id="usersErr"></div>
       <div class="users">
         <table>
-          <thead><tr><th>کاربر</th><th class="num">دانلود</th><th class="num">آپلود</th></tr></thead>
+          <thead><tr><th>کاربر</th><th class="num">سرعت دانلود</th><th class="num">سرعت آپلود</th><th class="num">حجم دانلود</th><th class="num">حجم آپلود</th></tr></thead>
           <tbody id="usersBody"></tbody>
         </table>
       </div>
       <div class="hint" id="usersHint"></div>
+    </section>
+
+    <section class="card" aria-labelledby="ptTitle">
+      <h2><span id="ptTitle">تست پینگ دلخواه</span><span class="state idle" id="ptState">—</span></h2>
+      <form class="pt" id="ptForm" autocomplete="off">
+        <input id="ptIp" inputmode="decimal" placeholder="4.2.2.4" aria-label="آی‌پی مقصد" required>
+        <select id="ptCount" aria-label="تعداد">
+          <option value="4">۴ بار</option>
+          <option value="10">۱۰ بار</option>
+          <option value="20">۲۰ بار</option>
+        </select>
+        <button id="ptBtn" type="submit">تست</button>
+      </form>
+      <div class="chips" id="ptChips">
+        <button type="button">8.8.8.8</button><button type="button">1.1.1.1</button><button type="button">4.2.2.4</button>
+      </div>
+      <div class="err" id="ptErr"></div>
+      <div id="ptResult" hidden>
+        <div class="stats">
+          <div class="stat"><span>پاسخ از کل</span><b id="ptSent">—</b></div>
+          <div class="stat"><span>از دست رفته</span><b id="ptLoss">—</b></div>
+          <div class="stat"><span>میانگین</span><b id="ptAvg">—</b></div>
+          <div class="stat"><span>کمترین</span><b id="ptMin">—</b></div>
+          <div class="stat"><span>بیشترین</span><b id="ptMax">—</b></div>
+          <div class="stat"><span>TTL</span><b id="ptTtl">—</b></div>
+        </div>
+        <div class="strip" id="ptStrip" role="img"></div>
+        <div class="hint">هر مربع یک بسته است: سبز یعنی پاسخ آمد، قرمز یعنی پاسخی نیامد. پینگ را خود روتر می‌زند.</div>
+      </div>
     </section>
   </div>
 </div>
@@ -117,7 +191,7 @@
 <script>
 'use strict';
 // Poll intervals: light on the router CPU, and paused while the tab is hidden.
-const EVERY = { system: 5000, ping: 10000, users: 15000 };
+const EVERY = { system: 5000, ping: 10000, users: 15000, accounts: 30000 };
 const HISTORY_MS = 10 * 60 * 1000;
 const $ = (id) => document.getElementById(id);
 
@@ -178,6 +252,22 @@ function parseRate(v) {
   if (!x) return 0;
   return +x[1] * ({ '': 1, k: 1e3, m: 1e6, g: 1e9 }[x[2].toLowerCase()]);
 }
+// "1234" / "12.3MiB" / "800KiB" → bytes
+function parseBytes(v) {
+  if (v === undefined || v === null || v === '') return 0;
+  const x = /^([\d.]+)\s*([kmgt]?)i?b?/i.exec(String(v));
+  if (!x) return 0;
+  return +x[1] * 1024 ** { '': 0, k: 1, m: 2, g: 3, t: 4 }[x[2].toLowerCase()];
+}
+const isIp = (v) =>
+  /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/.test(v) || (/^[0-9a-f:.]+$/i.test(v) && v.includes(':'));
+const el = (tag, cls, text) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+
 function setState(el, tone, text) {
   const icon = { good: '✓', warn: '!', bad: '✕', idle: '•' }[tone];
   el.className = `state ${tone}`;
@@ -341,7 +431,7 @@ function mergeUsers(d) {
   const users = new Map(); // key: IP
   const add = (ip, u) => {
     if (!ip) return;
-    users.set(ip, { ...(users.get(ip) || { ip, down: null, up: null }), ...u });
+    users.set(ip, { ...(users.get(ip) || { ip, down: null, up: null, volDown: null, volUp: null }), ...u });
   };
   for (const l of d.leases) if (l.status === 'bound') add(l.address, { name: l.comment || l['host-name'] || l['mac-address'], mac: l['mac-address'] });
   // Devices with a static IP: ARP entries on the DHCP (LAN) interfaces.
@@ -354,7 +444,8 @@ function mergeUsers(d) {
   for (const p of d.ppp) add(p.address, { name: p.name, ppp: `<${p.service || 'pppoe'}-${p.name}>` });
   for (const h of d.hotspot) add(h.address, { name: h.user });
 
-  // Live rates: simple queue on a single host (rate = "upload/download"), else Kid Control.
+  // Live rate and volume: simple queue on a single host ("upload/download"), else Kid Control.
+  // Volumes count since the counters were last reset (reboot, or a reset-counters scheduler).
   let hasRates = false;
   const byPpp = new Map([...users.values()].filter((u) => u.ppp).map((u) => [u.ppp, u]));
   for (const q of d.queues) {
@@ -362,8 +453,11 @@ function mergeUsers(d) {
     const u = users.get(hostOf(q.target)) || byPpp.get(q.target);
     if (!u) continue;
     const [up, down] = q.rate.split('/').map(Number);
+    const [bUp, bDown] = String(q.bytes || '0/0').split('/').map(Number);
     u.up = (u.up || 0) + up;
     u.down = (u.down || 0) + down;
+    u.volUp = (u.volUp || 0) + bUp;
+    u.volDown = (u.volDown || 0) + bDown;
     u.fromQueue = true;
     hasRates = true;
   }
@@ -372,6 +466,8 @@ function mergeUsers(d) {
     if (!u || u.fromQueue) continue;
     u.down = parseRate(k['rate-down']);
     u.up = parseRate(k['rate-up']);
+    u.volDown = parseBytes(k['bytes-down']);
+    u.volUp = parseBytes(k['bytes-up']);
     hasRates = true;
   }
   return { list: [...users.values()], hasRates };
@@ -380,13 +476,15 @@ function mergeUsers(d) {
 async function loadUsers() {
   try {
     const { list, hasRates } = mergeUsers(await fetchJson('/api/users'));
-    list.sort((a, b) => (b.down || 0) - (a.down || 0) || (b.up || 0) - (a.up || 0) || String(a.name).localeCompare(String(b.name)));
+    list.sort((a, b) => (b.down || 0) - (a.down || 0) || (b.volDown || 0) - (a.volDown || 0) || String(a.name).localeCompare(String(b.name)));
     const active = list.filter((u) => (u.down || 0) + (u.up || 0) > 8000).length;
     $('usersCount').innerHTML = `${list.length}<small> متصل</small>`;
     setState($('usersState'), 'good', hasRates ? `${active} فعال` : 'متصل');
     const sum = (k) => list.reduce((a, u) => a + (u[k] || 0), 0);
     $('totalDown').textContent = hasRates ? fmtBps(sum('down')) : '—';
     $('totalUp').textContent = hasRates ? fmtBps(sum('up')) : '—';
+    $('volDown').textContent = hasRates ? fmtBytes(sum('volDown')) : '—';
+    $('volUp').textContent = hasRates ? fmtBytes(sum('volUp')) : '—';
     const body = $('usersBody');
     body.textContent = '';
     for (const u of list) {
@@ -406,10 +504,14 @@ async function loadUsers() {
       const upc = document.createElement('td');
       upc.className = 'num';
       upc.textContent = fmtBps(u.up);
-      tr.append(who, dn, upc);
+      const vd = el('td', 'num', u.volDown === null ? '—' : fmtBytes(u.volDown));
+      const vu = el('td', 'num', u.volUp === null ? '—' : fmtBytes(u.volUp));
+      tr.append(who, dn, upc, vd, vu);
       body.append(tr);
     }
-    $('usersHint').textContent = hasRates ? '' : 'سرعت لحظه‌ای هر کاربر فقط برای کسانی دیده می‌شود که Simple Queue دارند (راهنما در README).';
+    $('usersHint').textContent = hasRates
+      ? 'حجم از آخرین صفر شدن شمارنده‌ها حساب می‌شود (ریبوت روتر یا ریست روزانه‌ی صف‌ها). «—» یعنی برای این کاربر صف یا Kid Control نیست.'
+      : 'سرعت و حجم هر کاربر فقط برای کسانی دیده می‌شود که Simple Queue دارند (راهنما در README).';
     $('usersErr').textContent = '';
   } catch (e) {
     $('usersErr').textContent = e?.error === 0 ? '' : errorText(e);
@@ -417,8 +519,119 @@ async function loadUsers() {
   }
 }
 
+// ---------- Router accounts (who can log in to the router, and who is logged in now)
+function isAdminPolicy(policy) {
+  return String(policy || '').split(',').includes('policy');
+}
+
+async function loadAccounts() {
+  try {
+    const { users, groups, active } = await fetchJson('/api/accounts');
+    const adminGroups = new Set(groups.filter((g) => isAdminPolicy(g.policy)).map((g) => g.name));
+    const enabled = users.filter((u) => u.disabled !== 'true');
+    const admins = enabled.filter((u) => adminGroups.has(u.group));
+    $('accCount').innerHTML = `${enabled.length}<small> حساب فعال</small>`;
+    $('accAdmins').textContent = admins.length;
+    $('accUsers').textContent = enabled.length - admins.length;
+    $('accDisabled').textContent = users.length - enabled.length;
+    setState($('accState'), active.length ? 'good' : 'idle', `${active.length} آنلاین`);
+
+    const act = $('accActive');
+    act.textContent = '';
+    if (!active.length) act.append(el('div', 'hint', 'هیچ‌کس'));
+    for (const a of active) {
+      const row = el('div', 'row');
+      const who = el('div', 'who');
+      who.append(el('span', '', a.name));
+      if (adminGroups.has(a.group)) who.append(el('span', 'tag admin', 'مدیر'));
+      row.append(who, el('span', 'tag ltr', `${a.via || '?'} · ${a.address || 'local'}`));
+      act.append(row);
+    }
+
+    const list = $('accList');
+    list.textContent = '';
+    const online = new Set(active.map((a) => a.name));
+    for (const u of [...users].sort((a, b) => (a.disabled === 'true') - (b.disabled === 'true') || a.name.localeCompare(b.name))) {
+      const off = u.disabled === 'true';
+      const row = el('div', 'row');
+      const who = el('div', 'who');
+      const dot = el('span', `dot${online.has(u.name) ? ' on' : ''}`);
+      dot.title = online.has(u.name) ? 'آنلاین' : 'آفلاین';
+      who.append(dot, el('span', '', u.name));
+      row.append(who);
+      const tags = el('div', 'who');
+      tags.append(el('span', `tag${adminGroups.has(u.group) ? ' admin' : ''}${off ? ' off' : ''}`, adminGroups.has(u.group) ? `مدیر · ${u.group}` : u.group));
+      if (off) tags.append(el('span', 'tag', 'غیرفعال'));
+      row.append(tags);
+      if (u.address) row.title = `فقط از: ${u.address}`;
+      list.append(row);
+    }
+    $('accErr').textContent = '';
+  } catch (e) {
+    $('accErr').textContent = e?.error === 0 ? '' : errorText(e);
+    setState($('accState'), 'idle', 'نامعلوم');
+  }
+}
+
+// ---------- Custom ping test
+async function runPingTest(ev) {
+  ev?.preventDefault();
+  const ip = $('ptIp').value.trim();
+  $('ptErr').textContent = '';
+  if (!isIp(ip)) {
+    $('ptErr').textContent = 'یک آی‌پی درست وارد کن، مثلاً 4.2.2.4';
+    return;
+  }
+  try { localStorage.setItem('mini.pingTest', ip); } catch { /* storage unavailable */ }
+  const btn = $('ptBtn');
+  btn.disabled = true;
+  btn.textContent = 'در حال تست…';
+  setState($('ptState'), 'idle', ip);
+  try {
+    const { rows } = await fetchJson(`/api/ping-test?target=${encodeURIComponent(ip)}&count=${$('ptCount').value}`);
+    const last = rows[rows.length - 1] || {};
+    const sent = +last.sent || rows.length;
+    const received = Math.min(sent, +last.received || 0);
+    const loss = sent ? Math.round(((sent - received) / sent) * 100) : 100;
+    const ms = (v) => (rttMs(v) === null ? '—' : `${rttMs(v)} ms`);
+    $('ptSent').textContent = `${received} / ${sent}`;
+    $('ptLoss').textContent = `${loss}%`;
+    $('ptAvg').textContent = received ? ms(last['avg-rtt']) : '—';
+    $('ptMin').textContent = received ? ms(last['min-rtt']) : '—';
+    $('ptMax').textContent = received ? ms(last['max-rtt']) : '—';
+    $('ptTtl').textContent = rows.find((r) => r.ttl)?.ttl ?? '—';
+    const strip = $('ptStrip');
+    strip.textContent = '';
+    for (const r of rows) {
+      const lost = !r.time;
+      const sq = el('i', lost ? 'lost' : '');
+      sq.title = `#${+r.seq + 1}: ${lost ? r.status || 'timeout' : r.time}`;
+      strip.append(sq);
+    }
+    strip.setAttribute('aria-label', `${received} از ${sent} بسته پاسخ گرفت`);
+    $('ptResult').hidden = false;
+    if (loss === 100) setState($('ptState'), 'bad', `${ip} · بدون پاسخ`);
+    else if (loss > 0) setState($('ptState'), 'warn', `${ip} · ناپایدار`);
+    else setState($('ptState'), 'good', `${ip} · وصل`);
+  } catch (e) {
+    const d = `${e?.message || ''} ${e?.detail || ''}`;
+    $('ptErr').textContent = /permission|not allowed/i.test(d) ? 'کاربر روتر برای ping به policy «test» نیاز دارد.' : errorText(e);
+    setState($('ptState'), 'idle', 'خطا');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'تست';
+  }
+}
+$('ptForm').addEventListener('submit', runPingTest);
+$('ptChips').addEventListener('click', (e) => {
+  if (e.target.tagName !== 'BUTTON') return;
+  $('ptIp').value = e.target.textContent;
+  runPingTest();
+});
+try { $('ptIp').value = localStorage.getItem('mini.pingTest') || ''; } catch { /* storage unavailable */ }
+
 // ---------- scheduling
-const jobs = [[loadSystem, EVERY.system], [loadPing, EVERY.ping], [loadUsers, EVERY.users]];
+const jobs = [[loadSystem, EVERY.system], [loadPing, EVERY.ping], [loadUsers, EVERY.users], [loadAccounts, EVERY.accounts]];
 const timers = [];
 function start() {
   stop();

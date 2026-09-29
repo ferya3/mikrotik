@@ -37,11 +37,11 @@ function New-RouterSession($cfg, [string]$password) {
 [Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 
 # Returns the router's JSON response as a string (never parsed here, so nothing gets re-shaped).
-function Invoke-Ros([string]$Method, [string]$Path, [string]$Body) {
+function Invoke-Ros([string]$Method, [string]$Path, [string]$Body, [int]$TimeoutMs = 8000) {
     $req = [Net.HttpWebRequest]::Create($script:Base + $Path)
     $req.Method = $Method
-    $req.Timeout = 8000
-    $req.ReadWriteTimeout = 8000
+    $req.Timeout = $TimeoutMs
+    $req.ReadWriteTimeout = $TimeoutMs
     $req.Accept = 'application/json'
     $req.Headers['Authorization'] = $script:Auth
     if ($Body) {
@@ -59,6 +59,20 @@ function Invoke-Ros([string]$Method, [string]$Path, [string]$Body) {
     } finally {
         $resp.Close()
     }
+}
+
+# A literal IPv4/IPv6 address only (no host names, no "1" = 0.0.0.1 shortcuts).
+function Test-IpLiteral([string]$s) {
+    if ($s -match '^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$') { return $true }
+    $ip = $null
+    return ($s -match '^[0-9a-fA-F:.]+$' -and $s.Contains(':') -and [Net.IPAddress]::TryParse($s, [ref]$ip))
+}
+
+# /ping from the router. Only a validated IP and a bounded count ever reach the router.
+function Invoke-Ping([string]$Target, [int]$Count, [string]$Interval) {
+    if (-not (Test-IpLiteral $Target)) { throw 'Not an IP address' }
+    $body = ConvertTo-Json -Compress -InputObject @{ address = $Target; count = [string]$Count; interval = $Interval }
+    return '{"target":"' + $Target + '","rows":' + (Invoke-Ros 'POST' '/ping' $body (30000)) + '}'
 }
 
 # Turns any failure into {"error":<status>,"message":"...","detail":"..."} for the page.
@@ -88,22 +102,34 @@ function Get-Optional([string]$Path) {
     try { return (Invoke-Ros 'GET' $Path $null) } catch { return '[]' }
 }
 
-# The only calls the page can trigger. Nothing from the request is forwarded to the router.
+# The only calls the page can trigger. The one input (custom ping IP/count) is validated above.
 $routes = @{
     '/api/system' = {
         '{"resource":' + (Invoke-Ros 'GET' '/system/resource?.proplist=cpu-load,free-memory,total-memory,uptime,version,board-name' $null) +
         ',"identity":' + (Invoke-Ros 'GET' '/system/identity' $null) + '}'
     }
     '/api/ping' = {
-        $body = ConvertTo-Json -Compress -InputObject @{ address = $script:PingTarget; count = '3'; interval = '200ms' }
-        '{"target":"' + $script:PingTarget + '","rows":' + (Invoke-Ros 'POST' '/ping' $body) + '}'
+        Invoke-Ping $script:PingTarget 3 '200ms'
+    }
+    '/api/ping-test' = {
+        param($ctx)
+        $target = [string]$ctx.Request.QueryString['target']
+        $count = 0
+        if (-not [int]::TryParse([string]$ctx.Request.QueryString['count'], [ref]$count) -or $count -lt 1 -or $count -gt 20) { $count = 4 }
+        if (-not (Test-IpLiteral $target)) { throw (New-Object ArgumentException('Enter an IP address, e.g. 4.2.2.4')) }
+        Invoke-Ping $target $count '500ms'
+    }
+    '/api/accounts' = {
+        '{"users":' + (Invoke-Ros 'GET' '/user?.proplist=name,group,disabled,address,last-logged-in,comment' $null) +
+        ',"groups":' + (Invoke-Ros 'GET' '/user/group?.proplist=name,policy' $null) +
+        ',"active":' + (Invoke-Ros 'GET' '/user/active?.proplist=name,address,via,when,group' $null) + '}'
     }
     '/api/users' = {
         '{"leases":' + (Invoke-Ros 'GET' '/ip/dhcp-server/lease?.proplist=address,mac-address,host-name,comment,status,last-seen' $null) +
         ',"dhcpServers":' + (Get-Optional '/ip/dhcp-server?.proplist=name,interface') +
         ',"arp":' + (Invoke-Ros 'GET' '/ip/arp?.proplist=address,mac-address,interface,comment,complete' $null) +
-        ',"queues":' + (Invoke-Ros 'GET' '/queue/simple?.proplist=name,target,rate,disabled' $null) +
-        ',"kid":' + (Get-Optional '/ip/kid-control/device?.proplist=name,mac-address,ip-address,rate-down,rate-up') +
+        ',"queues":' + (Invoke-Ros 'GET' '/queue/simple?.proplist=name,target,rate,bytes,disabled' $null) +
+        ',"kid":' + (Get-Optional '/ip/kid-control/device?.proplist=name,mac-address,ip-address,rate-down,rate-up,bytes-down,bytes-up') +
         ',"ppp":' + (Get-Optional '/ppp/active?.proplist=name,address,service,uptime') +
         ',"hotspot":' + (Get-Optional '/ip/hotspot/active?.proplist=user,address,mac-address,uptime') + '}'
     }
@@ -130,8 +156,7 @@ function New-Config {
         username   = Read-Default 'Router username' 'mini'
         pingTarget = Read-Default 'IP to ping' '8.8.8.8'
     }
-    $ip = $null
-    if (-not [Net.IPAddress]::TryParse($cfg.pingTarget, [ref]$ip)) { throw 'The ping target must be an IP address, e.g. 8.8.8.8' }
+    if (-not (Test-IpLiteral $cfg.pingTarget)) { throw 'The ping target must be an IP address, e.g. 8.8.8.8' }
     $secure = Read-Host 'Router password' -AsSecureString
     return @{ cfg = $cfg; secure = $secure }
 }
@@ -215,9 +240,15 @@ try {
                 Send-Response $ctx 200 'text/html; charset=utf-8' ([IO.File]::ReadAllText($pagePath, [Text.Encoding]::UTF8))
             } elseif ($routes.ContainsKey($path)) {
                 try {
-                    Send-Response $ctx 200 'application/json; charset=utf-8' (& $routes[$path])
+                    Send-Response $ctx 200 'application/json; charset=utf-8' (& $routes[$path] $ctx)
                 } catch {
-                    Send-Response $ctx 502 'application/json; charset=utf-8' (Get-ErrorJson $_)
+                    if ($_.Exception -is [ArgumentException]) {
+                        # Bad input from the page (e.g. not an IP): the router was never contacted.
+                        $msg = ConvertTo-Json -Compress -InputObject @{ error = 400; message = $_.Exception.Message; detail = '' }
+                        Send-Response $ctx 400 'application/json; charset=utf-8' $msg
+                    } else {
+                        Send-Response $ctx 502 'application/json; charset=utf-8' (Get-ErrorJson $_)
+                    }
                 }
             } else {
                 Send-Response $ctx 404 'text/plain' 'Not found'
