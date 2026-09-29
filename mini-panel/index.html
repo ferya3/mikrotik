@@ -132,7 +132,7 @@ function errorText(e) {
   if (!e) return 'خطای نامشخص';
   const detail = `${e.message || ''} ${e.detail || ''}`.trim();
   if (e.error === 401) return 'نام کاربری یا رمز روتر اشتباه است (mini-panel.cmd -Reset).';
-  if (/permission/i.test(detail)) return 'کاربر روتر اجازهٔ این کار را ندارد: ' + detail;
+  if (/permission|not allowed/i.test(detail)) return 'کاربر روتر اجازهٔ این کار را ندارد: ' + detail;
   if (e.error === 0 || e.error === undefined) return 'روتر در دسترس نیست: ' + detail;
   return detail || `خطا ${e.error}`;
 }
@@ -322,7 +322,7 @@ async function loadPing() {
   } catch (e) {
     const d = `${e?.message || ''} ${e?.detail || ''}`;
     // Router unreachable is already shown once in the banner.
-    $('netErr').textContent = /permission/i.test(d)
+    $('netErr').textContent = /permission|not allowed/i.test(d)
       ? 'کاربر روتر برای ping به policy «test» نیاز دارد (راهنما در README).'
       : e?.error === 0 ? '' : errorText(e);
     setState($('netState'), 'idle', 'نامعلوم');

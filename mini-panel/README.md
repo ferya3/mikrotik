@@ -14,12 +14,12 @@
 
 ```routeros
 /ip service set www disabled=no address=192.168.4.0/24
-/user group add name=mini policy=read,test,rest-api
+/user group add name=mini policy=read,test,api,rest-api
 /user add name=mini group=mini address=192.168.4.0/24 password="RAMZ-GHAVI"
 ```
 
 - کاربر `mini` **فقط خواندنی** است و فقط از شبکه‌ی داخلی می‌تواند وصل شود.
-- policy `test` برای پینگ لازم است.
+- policy `test` برای پینگ لازم است. RouterOS برای REST علاوه بر `rest-api` به `api` هم نیاز دارد.
 
 ## ۲. اجرا
 
@@ -47,7 +47,7 @@
 
 **«کاربر روتر برای ping به policy test نیاز دارد»:**
 ```routeros
-/user group set mini policy=read,test,rest-api
+/user group set mini policy=read,test,api,rest-api
 ```
 
 **«روتر در دسترس نیست»:**

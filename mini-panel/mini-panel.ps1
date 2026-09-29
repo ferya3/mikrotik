@@ -158,6 +158,10 @@ if (Test-Path $configPath) {
         $e = Get-ErrorJson $_ | ConvertFrom-Json
         Write-Host ('Could not connect: {0} {1}' -f $e.message, $e.detail) -ForegroundColor Red
         if ($e.error -eq 401) { Write-Host 'Check the username and password.' -ForegroundColor Yellow }
+        elseif (('{0} {1}' -f $e.message, $e.detail) -match 'not allowed|permission') {
+            Write-Host 'Connected, but the router user lacks a policy. In Winbox > Terminal run:' -ForegroundColor Yellow
+            Write-Host '  /user group set mini policy=read,test,api,rest-api' -ForegroundColor Yellow
+        }
         else { Write-Host 'Check the IP/port and that the router service is enabled: /ip service enable www' -ForegroundColor Yellow }
         exit 1
     }
