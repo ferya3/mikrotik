@@ -12,3 +12,6 @@ coverage/
 dump.rdb
 deploy/prometheus/metrics_token
 deploy/nginx/certs/*.pem
+
+# Mini panel: router address + DPAPI-encrypted password (per PC / Windows user)
+mini-panel/config.json

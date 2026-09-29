@@ -54,6 +54,10 @@ NEXT_PUBLIC_API_ORIGIN=http://localhost:4000 npm run dev    # پنل روی :300
 
 وارد `http://localhost:3000` شوید و روتری با host `127.0.0.1`، پورت `8080`، اتصال REST، TLS خاموش و کاربر `admin/admin` اضافه کنید.
 
+## پنل کوچک (جدا، بدون Docker)
+
+اگر فقط CPU، کاربران متصل و وضعیت اینترنت (پینگ گوگل) را می‌خواهی، از [`mini-panel/`](mini-panel/README.md) استفاده کن. کافی است روی `mini-panel.cmd` دوبار کلیک کنی.
+
 ## نصب سریع روی Windows
 
 1. [Docker Desktop](https://www.docker.com/products/docker-desktop/) و [Git for Windows](https://git-scm.com/download/win) را نصب کنید و Docker Desktop را باز کنید.

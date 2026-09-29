@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>پنل کوچک میکروتیک</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f6fa; --card: #ffffff; --border: #e2e7ef; --text: #111827; --muted: #5f6b7d;
+    --grid: #e8ecf2; --series: #2a78d6;
+    --good: #16803a; --warn: #b45309; --bad: #c62828; --track: #e8ecf2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1120; --card: #121a2b; --border: #22304a; --text: #e8edf5; --muted: #93a1b8;
+      --grid: #1c2740; --series: #3987e5;
+      --good: #3ecf72; --warn: #f0a93b; --bad: #f06060; --track: #1c2740;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.6 Vazirmatn, Tahoma, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 32px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  h1 { font-size: 18px; margin: 0; font-weight: 700; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .live { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .dot.on { background: var(--good); }
+  .banner { display: none; margin-bottom: 16px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--bad); color: var(--bad); background: color-mix(in srgb, var(--bad) 8%, var(--card)); }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; min-width: 0; }
+  .card h2 { font-size: 14px; font-weight: 500; color: var(--muted); margin: 0 0 8px; display: flex; justify-content: space-between; gap: 8px; }
+  .hero { font-size: 40px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; direction: ltr; text-align: right; }
+  .hero small { font-size: 16px; font-weight: 500; color: var(--muted); }
+  .state { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; padding: 2px 10px; border-radius: 999px; border: 1px solid currentColor; }
+  .state.good { color: var(--good); } .state.warn { color: var(--warn); } .state.bad { color: var(--bad); } .state.idle { color: var(--muted); }
+  .bar { height: 8px; border-radius: 4px; background: var(--track); overflow: hidden; margin: 10px 0 6px; }
+  .bar > i { display: block; height: 100%; border-radius: 4px; background: var(--good); transition: width .4s; }
+  .facts { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .facts b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .ltr { direction: ltr; unicode-bidi: isolate; }
+  .chart { position: relative; margin-top: 12px; }
+  .chart svg { display: block; width: 100%; height: 90px; }
+  .chart .cap { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  .tip { position: absolute; top: 0; pointer-events: none; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 3px 8px; font-size: 12px; white-space: nowrap; box-shadow: 0 2px 8px rgb(0 0 0 / .12); display: none; direction: ltr; }
+  .users { margin-top: 12px; max-height: 330px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: right; font-weight: 500; color: var(--muted); padding: 4px 6px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--card); }
+  td { padding: 5px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  td.num, th.num { text-align: left; direction: ltr; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ip { color: var(--muted); font-size: 12px; direction: ltr; text-align: right; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  .err { color: var(--bad); font-size: 13px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="title">پنل کوچک میکروتیک</h1>
+      <div class="sub" id="subtitle">در حال اتصال…</div>
+    </div>
+    <span class="live"><span class="dot" id="liveDot"></span><span id="liveText">—</span></span>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="grid">
+    <section class="card" aria-labelledby="cpuTitle">
+      <h2><span id="cpuTitle">مصرف CPU</span><span class="state idle" id="cpuState">—</span></h2>
+      <div class="hero" id="cpuValue">—</div>
+      <div class="bar"><i id="cpuBar" style="width:0"></i></div>
+      <div class="facts">
+        <span>حافظه: <b class="ltr" id="mem">—</b></span>
+        <span>روشن از: <b id="uptime">—</b></span>
+      </div>
+      <div class="chart" id="cpuChart"></div>
+    </section>
+
+    <section class="card" aria-labelledby="netTitle">
+      <h2><span id="netTitle">اینترنت (پینگ گوگل)</span><span class="state idle" id="netState">—</span></h2>
+      <div class="hero" id="rtt">—</div>
+      <div class="facts">
+        <span>مقصد: <b class="ltr" id="pingTarget">—</b></span>
+        <span>از دست رفته: <b class="ltr" id="loss">—</b></span>
+      </div>
+      <div class="err" id="netErr"></div>
+      <div class="chart" id="pingChart"></div>
+    </section>
+
+    <section class="card" aria-labelledby="usersTitle">
+      <h2><span id="usersTitle">کاربران</span><span class="state idle" id="usersState">—</span></h2>
+      <div class="hero" id="usersCount" style="direction: rtl">—</div>
+      <div class="facts">
+        <span>دانلود کل: <b class="ltr" id="totalDown">—</b></span>
+        <span>آپلود کل: <b class="ltr" id="totalUp">—</b></span>
+      </div>
+      <div class="err" id="usersErr"></div>
+      <div class="users">
+        <table>
+          <thead><tr><th>کاربر</th><th class="num">دانلود</th><th class="num">آپلود</th></tr></thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+      </div>
+      <div class="hint" id="usersHint"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+'use strict';
+// Poll intervals: light on the router CPU, and paused while the tab is hidden.
+const EVERY = { system: 5000, ping: 10000, users: 15000 };
+const HISTORY_MS = 10 * 60 * 1000;
+const $ = (id) => document.getElementById(id);
+
+async function fetchJson(path) {
+  const res = await fetch(path, { cache: 'no-store' });
+  const body = await res.json().catch(() => ({ error: res.status, message: res.statusText }));
+  if (!res.ok || (body && body.error !== undefined && !Array.isArray(body))) throw body;
+  return body;
+}
+
+function errorText(e) {
+  if (!e) return 'خطای نامشخص';
+  const detail = `${e.message || ''} ${e.detail || ''}`.trim();
+  if (e.error === 401) return 'نام کاربری یا رمز روتر اشتباه است (mini-panel.cmd -Reset).';
+  if (/permission/i.test(detail)) return 'کاربر روتر اجازهٔ این کار را ندارد: ' + detail;
+  if (e.error === 0 || e.error === undefined) return 'روتر در دسترس نیست: ' + detail;
+  return detail || `خطا ${e.error}`;
+}
+
+// ---------- formatting
+function fmtBps(v) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  const u = ['bps', 'Kbps', 'Mbps', 'Gbps'];
+  let i = 0;
+  while (v >= 1000 && i < u.length - 1) { v /= 1000; i++; }
+  return `${v.toFixed(v >= 100 || i === 0 ? 0 : 1)} ${u[i]}`;
+}
+function fmtBytes(v) {
+  const u = ['B', 'KB', 'MB', 'GB'];
+  let i = 0;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return `${v.toFixed(i === 0 ? 0 : 1)} ${u[i]}`;
+}
+// "1w2d03:04:05" / "3d4h5m" → short Persian text
+function fmtUptime(s) {
+  if (!s) return '—';
+  const m = { w: 0, d: 0, h: 0, m: 0 };
+  const clock = /(\d+):(\d{2}):\d{2}$/.exec(s);
+  if (clock) { m.h += +clock[1]; m.m += +clock[2]; }
+  for (const x of s.replace(/\d+:\d{2}:\d{2}$/, '').matchAll(/(\d+)([wdhm])(?!s)/g)) m[x[2]] += +x[1];
+  const days = m.w * 7 + m.d;
+  if (days) return `${days} روز و ${m.h} ساعت`;
+  if (m.h) return `${m.h} ساعت و ${m.m} دقیقه`;
+  return `${m.m} دقیقه`;
+}
+// "12ms338us" → 12.3
+function rttMs(s) {
+  if (!s) return null;
+  const k = { s: 1000, ms: 1, us: 0.001 };
+  let t = 0, found = false;
+  for (const x of String(s).matchAll(/(\d+(?:\.\d+)?)(ms|us|s)/g)) { t += x[1] * k[x[2]]; found = true; }
+  return found ? Math.round(t * 10) / 10 : null;
+}
+// "1.5Mbps" / "800kbps" / "12000" → bits per second
+function parseRate(v) {
+  if (v === undefined || v === null || v === '') return 0;
+  const x = /^([\d.]+)\s*([kmg]?)/i.exec(String(v));
+  if (!x) return 0;
+  return +x[1] * ({ '': 1, k: 1e3, m: 1e6, g: 1e9 }[x[2].toLowerCase()]);
+}
+function setState(el, tone, text) {
+  const icon = { good: '✓', warn: '!', bad: '✕', idle: '•' }[tone];
+  el.className = `state ${tone}`;
+  el.textContent = `${icon} ${text}`;
+}
+
+// ---------- sparkline: one series, recessive grid, crosshair + tooltip on hover
+function sparkline(box, points, { max, format, label }) {
+  box.innerHTML = '';
+  if (points.length < 2) {
+    box.innerHTML = '<div class="cap"><span>در حال جمع‌آوری نمونه…</span></div>';
+    return;
+  }
+  const W = Math.max(200, box.clientWidth), H = 90, P = 4;
+  const t0 = points[0].t, t1 = points[points.length - 1].t;
+  const top = max ?? Math.max(10, ...points.map((p) => p.v ?? 0)) * 1.15;
+  const x = (t) => P + ((t - t0) / Math.max(1, t1 - t0)) * (W - 2 * P);
+  const y = (v) => P + (1 - Math.min(v, top) / top) * (H - 2 * P);
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('role', 'img');
+  const last = points[points.length - 1];
+  svg.setAttribute('aria-label', `${label}: ${last.v === null ? '—' : format(last.v)}`);
+  const line = (x1, y1, x2, y2, stroke, dash) => {
+    const l = document.createElementNS(ns, 'line');
+    Object.entries({ x1, y1, x2, y2, stroke, 'stroke-width': 1 }).forEach(([k, v]) => l.setAttribute(k, v));
+    if (dash) l.setAttribute('stroke-dasharray', '3 3');
+    return l;
+  };
+  svg.append(line(0, y(top / 2), W, y(top / 2), 'var(--grid)'), line(0, H - P, W, H - P, 'var(--grid)'));
+  // Gaps (null = no reply) break the line instead of drawing to zero.
+  let d = '';
+  let pen = false;
+  for (const p of points) {
+    if (p.v === null) { pen = false; continue; }
+    d += `${pen ? 'L' : 'M'}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`;
+    pen = true;
+  }
+  const path = document.createElementNS(ns, 'path');
+  Object.entries({ d, fill: 'none', stroke: 'var(--series)', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' })
+    .forEach(([k, v]) => path.setAttribute(k, v));
+  svg.append(path);
+
+  const cross = line(0, P, 0, H - P, 'var(--muted)', true);
+  const dot = document.createElementNS(ns, 'circle');
+  Object.entries({ r: 4, fill: 'var(--series)', stroke: 'var(--card)', 'stroke-width': 2 }).forEach(([k, v]) => dot.setAttribute(k, v));
+  cross.style.display = dot.style.display = 'none';
+  svg.append(cross, dot);
+  box.append(svg);
+
+  const tip = document.createElement('div');
+  tip.className = 'tip';
+  box.append(tip);
+  const cap = document.createElement('div');
+  cap.className = 'cap';
+  const hhmm = (t) => new Date(t).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+  cap.innerHTML = `<span>${hhmm(t1)}</span><span>${hhmm(t0)}</span>`;
+  box.append(cap);
+
+  svg.addEventListener('mousemove', (e) => {
+    const r = svg.getBoundingClientRect();
+    const px = ((e.clientX - r.left) / r.width) * W;
+    let best = points[0];
+    for (const p of points) if (Math.abs(x(p.t) - px) < Math.abs(x(best.t) - px)) best = p;
+    const bx = x(best.t);
+    cross.setAttribute('x1', bx); cross.setAttribute('x2', bx);
+    cross.style.display = '';
+    if (best.v !== null) { dot.setAttribute('cx', bx); dot.setAttribute('cy', y(best.v)); dot.style.display = ''; }
+    else dot.style.display = 'none';
+    tip.textContent = `${new Date(best.t).toLocaleTimeString('fa-IR')} · ${best.v === null ? 'بدون پاسخ' : format(best.v)}`;
+    tip.style.display = 'block';
+    const left = (bx / W) * r.width;
+    tip.style.left = `${left > r.width / 2 ? left - tip.offsetWidth - 8 : left + 8}px`;
+  });
+  svg.addEventListener('mouseleave', () => { tip.style.display = 'none'; cross.style.display = dot.style.display = 'none'; });
+}
+
+// ---------- state
+const hist = { cpu: [], rtt: [] };
+const push = (arr, v) => {
+  const now = Date.now();
+  arr.push({ t: now, v });
+  while (arr.length && arr[0].t < now - HISTORY_MS) arr.shift();
+};
+let lastOk = 0;
+
+function markLive(ok, e) {
+  if (ok) lastOk = Date.now();
+  const fresh = Date.now() - lastOk < 20000;
+  $('liveDot').className = 'dot' + (fresh ? ' on' : '');
+  $('liveText').textContent = fresh ? 'زنده' : 'قطع';
+  const b = $('banner');
+  if (!ok && e) { b.textContent = errorText(e); b.style.display = 'block'; }
+  else if (ok) b.style.display = 'none';
+}
+
+// ---------- CPU / system
+async function loadSystem() {
+  try {
+    const { resource: r, identity } = await fetchJson('/api/system');
+    const cpu = +r['cpu-load'];
+    push(hist.cpu, cpu);
+    $('title').textContent = identity?.name || 'پنل کوچک میکروتیک';
+    $('subtitle').textContent = [r['board-name'], r.version && `RouterOS ${r.version}`].filter(Boolean).join(' · ');
+    $('cpuValue').innerHTML = `${cpu}<small>%</small>`;
+    const tone = cpu >= 90 ? 'bad' : cpu >= 70 ? 'warn' : 'good';
+    setState($('cpuState'), tone, { good: 'عادی', warn: 'بالا', bad: 'بحرانی' }[tone]);
+    const bar = $('cpuBar');
+    bar.style.width = `${Math.min(100, cpu)}%`;
+    bar.style.background = `var(--${tone})`;
+    const total = +r['total-memory'], free = +r['free-memory'];
+    $('mem').textContent = total ? `${Math.round(((total - free) / total) * 100)}% / ${fmtBytes(total)}` : '—';
+    $('uptime').textContent = fmtUptime(r.uptime);
+    sparkline($('cpuChart'), hist.cpu, { max: 100, format: (v) => `${v}%`, label: 'CPU' });
+    markLive(true);
+  } catch (e) {
+    push(hist.cpu, null);
+    setState($('cpuState'), 'idle', 'نامعلوم');
+    markLive(false, e);
+  }
+}
+
+// ---------- Internet (the router pings the target itself)
+async function loadPing() {
+  try {
+    const { target, rows } = await fetchJson('/api/ping');
+    const last = rows[rows.length - 1] || {};
+    const sent = +last.sent || 3;
+    const received = Math.min(sent, +last.received || 0);
+    const loss = Math.round(((sent - received) / sent) * 100);
+    const rtt = received ? rttMs(last['avg-rtt']) : null;
+    push(hist.rtt, rtt);
+    $('pingTarget').textContent = target;
+    $('loss').textContent = `${loss}%`;
+    $('rtt').innerHTML = rtt === null ? '—' : `${rtt < 10 ? rtt.toFixed(1) : Math.round(rtt)}<small> ms</small>`;
+    $('netErr').textContent = '';
+    if (loss === 100) setState($('netState'), 'bad', 'قطع');
+    else if (loss > 0 || rtt > 150) setState($('netState'), 'warn', 'ناپایدار');
+    else setState($('netState'), 'good', 'وصل');
+    sparkline($('pingChart'), hist.rtt, { format: (v) => `${v} ms`, label: 'Ping' });
+  } catch (e) {
+    const d = `${e?.message || ''} ${e?.detail || ''}`;
+    // Router unreachable is already shown once in the banner.
+    $('netErr').textContent = /permission/i.test(d)
+      ? 'کاربر روتر برای ping به policy «test» نیاز دارد (راهنما در README).'
+      : e?.error === 0 ? '' : errorText(e);
+    setState($('netState'), 'idle', 'نامعلوم');
+  }
+}
+
+// ---------- Users
+const hostOf = (target) => {
+  const t = String(target || '').split(',');
+  if (t.length !== 1) return null;
+  const m = /^(\d+\.\d+\.\d+\.\d+)(?:\/32)?$/.exec(t[0].trim());
+  return m ? m[1] : null;
+};
+
+function mergeUsers(d) {
+  const users = new Map(); // key: IP
+  const add = (ip, u) => {
+    if (!ip) return;
+    users.set(ip, { ...(users.get(ip) || { ip, down: null, up: null }), ...u });
+  };
+  for (const l of d.leases) if (l.status === 'bound') add(l.address, { name: l.comment || l['host-name'] || l['mac-address'], mac: l['mac-address'] });
+  // Devices with a static IP: ARP entries on the DHCP (LAN) interfaces.
+  const lan = new Set(d.dhcpServers.map((s) => s.interface));
+  for (const a of d.arp) {
+    if (!a['mac-address'] || a.complete === 'false' || users.has(a.address)) continue;
+    if (lan.size && !lan.has(a.interface)) continue;
+    add(a.address, { name: a.comment || a['mac-address'], mac: a['mac-address'] });
+  }
+  for (const p of d.ppp) add(p.address, { name: p.name, ppp: `<${p.service || 'pppoe'}-${p.name}>` });
+  for (const h of d.hotspot) add(h.address, { name: h.user });
+
+  // Live rates: simple queue on a single host (rate = "upload/download"), else Kid Control.
+  let hasRates = false;
+  const byPpp = new Map([...users.values()].filter((u) => u.ppp).map((u) => [u.ppp, u]));
+  for (const q of d.queues) {
+    if (q.disabled === 'true' || !q.rate) continue;
+    const u = users.get(hostOf(q.target)) || byPpp.get(q.target);
+    if (!u) continue;
+    const [up, down] = q.rate.split('/').map(Number);
+    u.up = (u.up || 0) + up;
+    u.down = (u.down || 0) + down;
+    u.fromQueue = true;
+    hasRates = true;
+  }
+  for (const k of d.kid) {
+    const u = users.get(k['ip-address']);
+    if (!u || u.fromQueue) continue;
+    u.down = parseRate(k['rate-down']);
+    u.up = parseRate(k['rate-up']);
+    hasRates = true;
+  }
+  return { list: [...users.values()], hasRates };
+}
+
+async function loadUsers() {
+  try {
+    const { list, hasRates } = mergeUsers(await fetchJson('/api/users'));
+    list.sort((a, b) => (b.down || 0) - (a.down || 0) || (b.up || 0) - (a.up || 0) || String(a.name).localeCompare(String(b.name)));
+    const active = list.filter((u) => (u.down || 0) + (u.up || 0) > 8000).length;
+    $('usersCount').innerHTML = `${list.length}<small> متصل</small>`;
+    setState($('usersState'), 'good', hasRates ? `${active} فعال` : 'متصل');
+    const sum = (k) => list.reduce((a, u) => a + (u[k] || 0), 0);
+    $('totalDown').textContent = hasRates ? fmtBps(sum('down')) : '—';
+    $('totalUp').textContent = hasRates ? fmtBps(sum('up')) : '—';
+    const body = $('usersBody');
+    body.textContent = '';
+    for (const u of list) {
+      const tr = document.createElement('tr');
+      const who = document.createElement('td');
+      const name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = u.name || u.ip;
+      name.title = [u.name, u.mac].filter(Boolean).join(' · ');
+      const ip = document.createElement('div');
+      ip.className = 'ip';
+      ip.textContent = u.ip;
+      who.append(name, ip);
+      const dn = document.createElement('td');
+      dn.className = 'num';
+      dn.textContent = fmtBps(u.down);
+      const upc = document.createElement('td');
+      upc.className = 'num';
+      upc.textContent = fmtBps(u.up);
+      tr.append(who, dn, upc);
+      body.append(tr);
+    }
+    $('usersHint').textContent = hasRates ? '' : 'سرعت لحظه‌ای هر کاربر فقط برای کسانی دیده می‌شود که Simple Queue دارند (راهنما در README).';
+    $('usersErr').textContent = '';
+  } catch (e) {
+    $('usersErr').textContent = e?.error === 0 ? '' : errorText(e);
+    setState($('usersState'), 'idle', 'نامعلوم');
+  }
+}
+
+// ---------- scheduling
+const jobs = [[loadSystem, EVERY.system], [loadPing, EVERY.ping], [loadUsers, EVERY.users]];
+const timers = [];
+function start() {
+  stop();
+  for (const [fn, ms] of jobs) { fn(); timers.push(setInterval(fn, ms)); }
+}
+function stop() { while (timers.length) clearInterval(timers.pop()); }
+document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
+window.addEventListener('resize', () => {
+  sparkline($('cpuChart'), hist.cpu, { max: 100, format: (v) => `${v}%`, label: 'CPU' });
+  sparkline($('pingChart'), hist.rtt, { format: (v) => `${v} ms`, label: 'Ping' });
+});
+start();
+</script>
+</body>
+</html>
