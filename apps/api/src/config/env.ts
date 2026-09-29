@@ -86,7 +86,7 @@ export function loadConfig(): AppConfig {
     credentialKeys: keys,
     activeKeyVersion: active,
     routerTimeoutMs: int('ROUTER_TIMEOUT_MS', 8000),
-    pollIntervalMs: int('POLL_INTERVAL_MS', 10000),
+    pollIntervalMs: int('POLL_INTERVAL_MS', 15000),
     pollConcurrency: int('POLL_CONCURRENCY', 10),
     cpuAlertThreshold: int('CPU_ALERT_THRESHOLD', 90),
     metricsRetentionHours: int('METRICS_RETENTION_HOURS', 24),

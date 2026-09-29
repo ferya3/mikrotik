@@ -4,7 +4,7 @@ import { ClientUsageService } from '../clients/client-usage.service';
 import { APP_CONFIG, AppConfig } from '../config/env';
 import { RouterAuthError } from '../mikrotik/errors';
 import { MikrotikService } from '../mikrotik/mikrotik.service';
-import { parseRosDuration } from '../mikrotik/routeros.client';
+import { parseRosDuration, RouterOsClient } from '../mikrotik/routeros.client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.module';
 import { AlertsService, EVENTS_CHANNEL } from './alerts.service';
@@ -73,6 +73,17 @@ export class PollerService implements OnApplicationBootstrap, OnModuleDestroy {
     }
   }
 
+  /** Temperature changes slowly: read it at most once a minute per router. */
+  private readonly tempCache = new Map<string, { at: number; value: number | null }>();
+
+  private async temperature(routerId: string, now: number, c: RouterOsClient): Promise<number | null> {
+    const cached = this.tempCache.get(routerId);
+    if (cached && now - cached.at < 60_000) return cached.value;
+    const value = await c.getTemperature();
+    this.tempCache.set(routerId, { at: now, value });
+    return value;
+  }
+
   async pollOne(r: { id: string; name: string; host: string; status: RouterStatus }): Promise<RouterLive> {
     const now = Date.now();
     let live: RouterLive;
@@ -80,8 +91,9 @@ export class PollerService implements OnApplicationBootstrap, OnModuleDestroy {
       live = await this.mikrotik.withClient(r.id, async (c) => {
         const [res, ifaces, temperature, ppp, queues] = await Promise.all([
           c.getSystemResource(),
-          c.listInterfaces(),
-          c.getTemperature(),
+          // Only the columns the poller uses: keeps each poll cheap for the router's CPU.
+          c.adapter.print('/interface', { proplist: ['name', 'type', 'running', 'disabled', 'rx-byte', 'tx-byte'] }),
+          this.temperature(r.id, now, c),
           c.adapter.print('/ppp/active', { proplist: ['.id', 'name', 'service'] }).catch(() => []),
           c.adapter
             .print('/queue/simple', { proplist: ['.id', 'target', 'bytes', 'dynamic', 'disabled', 'comment'] })

@@ -282,8 +282,9 @@ function LiveClients({ routerId }: { routerId: string }) {
   const q = useQuery({
     queryKey: key,
     queryFn: () => get<ClientsResponse>(`/routers/${routerId}/clients`),
-    // Live rates come straight from the router's queue counters.
-    refetchInterval: 5000,
+    // Live rates come straight from the router (9 menus per refresh), so keep this modest
+    // to spare the router's CPU. Stops automatically when the browser tab is hidden.
+    refetchInterval: 15000,
   });
   const refresh = () => qc.invalidateQueries({ queryKey: key });
 
@@ -330,7 +331,7 @@ function LiveClients({ routerId }: { routerId: string }) {
         <div className="flex flex-wrap items-center justify-between gap-2 border-b p-3">
           <div>
             <h3 className="text-sm font-semibold">Clients — heaviest downloaders first</h3>
-            <p className="text-xs text-muted-foreground">DHCP, PPP, hotspot and static devices. Refreshes every 5 seconds.</p>
+            <p className="text-xs text-muted-foreground">DHCP, PPP, hotspot and static devices. Refreshes every 15 seconds.</p>
           </div>
           <div className="flex items-center gap-2">
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
