@@ -117,7 +117,10 @@ if ((Test-Path $certFile) -and (Test-Path $keyFile)) {
 
 # ---------------------------------------------------------------- 4. Build & start
 Step 'Building and starting the containers (first time takes several minutes)'
-$code = Invoke-Docker compose up -d --build
+# Not piped: compose/buildx need the real console for their progress display
+# (piping it fails on Windows with 'failed to get console: The handle is invalid').
+& docker compose up -d --build
+$code = $LASTEXITCODE
 if ($code -ne 0) {
   Write-Host ''
   Write-Host 'If the error mentions 403 / Forbidden / "export control" while pulling images, Docker Hub is blocked' -ForegroundColor Yellow
