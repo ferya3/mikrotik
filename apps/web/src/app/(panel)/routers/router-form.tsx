@@ -99,7 +99,19 @@ export function RouterForm({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="port">Port</Label>
-          <Input id="port" type="number" value={f.port} onChange={(e) => set('port', e.target.value)} placeholder={String(defaultPort)} />
+          <Input
+            id="port"
+            type="number"
+            value={f.port}
+            onChange={(e) => {
+              const port = e.target.value;
+              set('port', port);
+              // Well-known RouterOS ports imply the transport security.
+              if (port === '80' || port === '8728') set('useTls', false);
+              if (port === '443' || port === '8729') set('useTls', true);
+            }}
+            placeholder={String(defaultPort)}
+          />
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={f.useTls} onChange={(e) => set('useTls', e.target.checked)} /> Use TLS (recommended)

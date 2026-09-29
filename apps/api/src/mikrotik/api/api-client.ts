@@ -1,7 +1,7 @@
 import { createHash } from 'crypto';
 import { connect as netConnect, Socket } from 'net';
 import { connect as tlsConnect } from 'tls';
-import { RouterAuthError, RouterCommandError, RouterConnectionError } from '../errors';
+import { describeConnectError, RouterAuthError, RouterCommandError, RouterConnectionError } from '../errors';
 import { encodeSentence, parseSentence, Reply, SentenceDecoder } from './protocol';
 
 export interface ApiClientOptions {
@@ -51,7 +51,7 @@ export class RouterOsApiClient {
 
   static async connect(opts: ApiClientOptions): Promise<RouterOsApiClient> {
     const socket = await new Promise<Socket>((resolve, reject) => {
-      const onError = (e: Error) => reject(new RouterConnectionError(`${opts.host}:${opts.port} ${e.message}`));
+      const onError = (e: Error) => reject(describeConnectError(opts.host, opts.port, opts.tls, e));
       const s: Socket = opts.tls
         ? tlsConnect({
             host: opts.host,

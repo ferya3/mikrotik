@@ -1,6 +1,6 @@
 import * as http from 'http';
 import * as https from 'https';
-import { RouterAuthError, RouterCommandError, RouterConnectionError, RouterNotFoundError } from '../errors';
+import { describeConnectError, RouterAuthError, RouterCommandError, RouterConnectionError, RouterNotFoundError } from '../errors';
 import {
   assertCommand,
   assertId,
@@ -145,7 +145,7 @@ export class RestRouterAdapter implements RouterAdapter {
         },
       );
       req.on('timeout', () => req.destroy(new Error(`timeout after ${this.opts.timeoutMs}ms`)));
-      req.on('error', (e) => reject(new RouterConnectionError(`${this.opts.host}:${port} ${e.message}`)));
+      req.on('error', (e) => reject(describeConnectError(this.opts.host, port, this.opts.tls, e)));
       if (payload) req.write(payload);
       req.end();
     });
