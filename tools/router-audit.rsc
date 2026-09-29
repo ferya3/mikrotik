@@ -167,14 +167,16 @@ $aINF ("clock " . [/system clock get date] . " " . [/system clock get time])
 :put ""; :put "===== 7. SERVICES AND ACCESS"
 :foreach s in=[/ip service find where disabled=no] do={
   :local n [/ip service get $s name]
-  :local a [:tostr [/ip service get $s address]]
+  :local a ""
+  :do {:set a [:tostr [/ip service get $s available-from]]} on-error={:do {:set a [:tostr [/ip service get $s address]]} on-error={}}
   :if (($n = "telnet") || ($n = "ftp")) do={$aBAD ($n . " is on, passwords travel in plain text : /ip service disable " . $n)} else={
-    :if ([:len $a] = 0) do={$aBAD ($n . " (port " . [/ip service get $s port] . ") open to ANY address : /ip service set " . $n . " address=192.168.4.0/24")} else={$aOK ($n . " (port " . [/ip service get $s port] . ") only from " . $a)}
+    :if ([:len $a] = 0) do={$aBAD ($n . " (port " . [/ip service get $s port] . ") open to ANY address : /ip service set " . $n . " available-from=192.168.4.0/24")} else={$aOK ($n . " (port " . [/ip service get $s port] . ") only from " . $a)}
   }
 }
 :foreach u in=[/user find where disabled=no] do={
   :local n [/user get $u name]
-  :local a [:tostr [/user get $u address]]
+  :local a ""
+  :do {:set a [:tostr [/user get $u address]]} on-error={}
   :if ($n = "admin") do={$aBAD "user admin is enabled - the first name attackers try"}
   :if ([:len $a] = 0) do={$aBAD ("user " . $n . " (" . [/user get $u group] . ") can log in from ANY address : /user set " . $n . " address=192.168.4.0/24")} else={$aOK ("user " . $n . " (" . [/user get $u group] . ") only from " . $a)}
 }

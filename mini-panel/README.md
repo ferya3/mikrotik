@@ -15,7 +15,7 @@
 در ترمینال Winbox بزن (به‌جای `RAMZ-GHAVI` یک رمز قوی بگذار):
 
 ```routeros
-/ip service set www disabled=no address=192.168.4.0/24
+/ip service set www disabled=no available-from=192.168.4.0/24
 /user group add name=mini policy=read,test,api,rest-api
 /user add name=mini group=mini address=192.168.4.0/24 password="RAMZ-GHAVI"
 ```
