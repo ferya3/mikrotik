@@ -23,7 +23,7 @@
     :if ($hp < 10) do={$bad ("disk free only " . $hp . "%: delete old files")} else={$ok ("disk free " . $hp . "%")}
   } on-error={}
   :if ([/system identity get name] = "MikroTik") do={$bad "identity is the default MikroTik: give each router its own name"}
-  :if ([/system ntp client get enabled]) do={$ok "NTP client on"} else={$bad "NTP off: /system ntp client set enabled=yes"}
+  :if ([/system ntp client get enabled]) do={$ok "NTP client on"} else={$bad "NTP off: /system ntp client set enabled=yes server-dns-names=pool.ntp.org"}
 } on-error={$bad "system check failed"}
 :do {
   :local cf [/system routerboard get current-firmware]
@@ -133,7 +133,7 @@
       }
     } on-error={}
   }
-  :if ($broad > 0) do={$ok "input: a general drop rule protects the router itself"} else={$bad "input: NO general drop rule, anything in the LAN can reach the router. /ip firewall filter add chain=input action=drop in-interface-list=!LAN (after the accept established/icmp rules)"}
+  :if ($broad > 0) do={$ok "input: a general drop rule protects the router itself"} else={$bad "input: NO general drop rule, anything in the LAN can reach the router. Restrict /ip service addresses first; add an input drop rule only in Safe Mode (a wrong rule locks you out)"}
   :if ($inv > 0) do={$ok "forward: invalid packets dropped"} else={$inf "forward: invalid packets are not dropped"}
   :if ($ft > 0) do={$inf "FastTrack on: queues and limits do not see fasttracked traffic"}
 } on-error={$bad "firewall check failed"}
@@ -159,9 +159,10 @@
     :if ([/ip service get $s disabled] = false) do={
       :local n [/ip service get $s name]
       :local from ""
-      :do {:set from [:tostr [/ip service get $s available-from]]} on-error={:do {:set from [:tostr [/ip service get $s address]]} on-error={}}
+      :local prop "address"
+      :do {:set from [:tostr [/ip service get $s available-from]]; :set prop "available-from"} on-error={:do {:set from [:tostr [/ip service get $s address]]} on-error={}}
       :if (($n = "telnet") || ($n = "ftp")) do={$bad ($n . " is on, passwords travel in plain text: /ip service disable " . $n)} else={
-        :if ([:len $from] = 0) do={$bad ($n . " (port " . [/ip service get $s port] . ") open to ANY address: /ip service set " . $n . " available-from=" . $lan)} else={$ok ($n . " (port " . [/ip service get $s port] . ") only from " . $from)}
+        :if ([:len $from] = 0) do={$bad ($n . " (port " . [/ip service get $s port] . ") open to ANY address: /ip service set " . $n . " " . $prop . "=" . $lan)} else={$ok ($n . " (port " . [/ip service get $s port] . ") only from " . $from)}
       }
     }
   }
