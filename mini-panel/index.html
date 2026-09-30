@@ -600,17 +600,34 @@ async function loadAccounts() {
     $('accAdmins').textContent = admins.length;
     $('accUsers').textContent = enabled.length - admins.length;
     $('accDisabled').textContent = users.length - enabled.length;
-    setState($('accState'), active.length ? 'good' : 'idle', `${active.length} آنلاین`);
+    // The router lists every connection as its own session (a REST client that reconnects piles up rows),
+    // so group identical name + method + address into one row with a count.
+    const groups2 = new Map();
+    for (const a of active) {
+      const k = `${a.name}|${a.via}|${a.address || ''}`;
+      const g = groups2.get(k) || { ...a, n: 0 };
+      g.n++;
+      groups2.set(k, g);
+    }
+    const people = new Set(active.map((a) => a.name)).size;
+    setState($('accState'), people ? 'good' : 'idle', `${people} آنلاین`);
 
     const act = $('accActive');
     act.textContent = '';
     if (!active.length) act.append(el('div', 'hint', 'هیچ‌کس'));
-    for (const a of active) {
+    for (const a of groups2.values()) {
       const row = el('div', 'row');
       const who = el('div', 'who');
       who.append(el('span', '', a.name));
       if (adminGroups.has(a.group)) who.append(el('span', 'tag admin', 'مدیر'));
-      row.append(who, el('span', 'tag ltr', `${a.via || '?'} · ${a.address || 'local'}`));
+      const tags = el('div', 'who');
+      tags.append(el('span', 'tag ltr', `${a.via || '?'} · ${a.address || 'local'}`));
+      if (a.n > 1) {
+        const c = el('span', 'tag', `${a.n} نشست`);
+        c.title = 'روتر هر اتصال را یک نشست جدا می‌شمارد';
+        tags.append(c);
+      }
+      row.append(who, tags);
       act.append(row);
     }
 
