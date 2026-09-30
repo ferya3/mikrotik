@@ -15,3 +15,6 @@ deploy/nginx/certs/*.pem
 
 # Mini panel: router address + DPAPI-encrypted password (per PC / Windows user)
 mini-panel/config.json
+
+# Fleet audit output (may contain internal addresses and findings)
+tools/audit-report-*.txt
