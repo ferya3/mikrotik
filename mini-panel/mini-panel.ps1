@@ -119,6 +119,15 @@ $routes = @{
         if (-not (Test-IpLiteral $target)) { throw (New-Object ArgumentException('Enter an IP address, e.g. 4.2.2.4')) }
         Invoke-Ping $target $count '500ms'
     }
+    '/api/ips' = {
+        '{"addresses":' + (Invoke-Ros 'GET' '/ip/address?.proplist=address,interface,disabled' $null) +
+        ',"arp":' + (Invoke-Ros 'GET' '/ip/arp?.proplist=address,mac-address,interface,complete' $null) +
+        ',"leases":' + (Invoke-Ros 'GET' '/ip/dhcp-server/lease?.proplist=address,mac-address,host-name,comment,status,dynamic' $null) +
+        ',"dhcpServers":' + (Get-Optional '/ip/dhcp-server?.proplist=name,interface,address-pool,disabled') +
+        ',"pools":' + (Get-Optional '/ip/pool?.proplist=name,ranges') +
+        ',"nat":' + (Get-Optional '/ip/firewall/nat?.proplist=chain,action,disabled,dynamic,dst-address,dst-port,protocol,to-addresses,to-ports,comment') +
+        ',"routes":' + (Get-Optional '/ip/route?.proplist=dst-address,gateway,disabled,active') + '}'
+    }
     '/api/accounts' = {
         '{"users":' + (Invoke-Ros 'GET' '/user?.proplist=name,group,disabled,address,last-logged-in,comment' $null) +
         ',"groups":' + (Invoke-Ros 'GET' '/user/group?.proplist=name,policy' $null) +

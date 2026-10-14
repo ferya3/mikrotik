@@ -66,6 +66,33 @@
   .pt input:focus, .pt select:focus, .pt button:focus-visible { outline: 2px solid var(--series); outline-offset: 1px; }
   .pt button { background: var(--series); border-color: var(--series); color: #fff; font-weight: 500; cursor: pointer; padding: 7px 16px; }
   .pt button:disabled { opacity: .6; cursor: progress; }
+  .cols2 { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  @media (max-width: 900px) { .cols2 { grid-template-columns: 1fr; } }
+  .sub2 { font-size: 13px; font-weight: 700; margin: 14px 0 6px; }
+  .sub2:first-child { margin-top: 0; }
+  .chips2 { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ltrx { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+  .chip2 { display: inline-flex; direction: ltr; gap: 5px; font-size: 12px; font-variant-numeric: tabular-nums; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg); }
+  .chip2.good { color: var(--good); border-color: currentColor; }
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
+  .tile { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+  .tile b { display: block; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; direction: ltr; text-align: right; }
+  .tile span { font-size: 12px; color: var(--muted); }
+  .warnrow { border: 1px solid var(--warn); border-radius: 8px; padding: 6px 10px; font-size: 13px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .warnrow code { direction: ltr; font-size: 12px; color: var(--muted); }
+  .copy { font: inherit; font-size: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px; padding: 3px 10px; cursor: pointer; }
+  .copy:focus-visible { outline: 2px solid var(--series); }
+  .block { margin-top: 12px; }
+  .block h3 { font-size: 13px; margin: 0 0 4px; color: var(--muted); font-weight: 500; }
+  .prow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; }
+  .prow .ipc { flex: none; font-variant-numeric: tabular-nums; }
+  .prow .stg { margin-inline-start: auto; }
+  .prow .txt { flex-basis: 100%; order: 5; font-size: 12px; color: var(--muted); direction: ltr; text-align: left; unicode-bidi: plaintext; overflow-wrap: anywhere; }
+  .st-free { color: var(--good); border-color: currentColor; }
+  .st-warn { color: var(--warn); border-color: currentColor; }
+  details.used { margin-top: 14px; }
+  details.used summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+  details.used input { font: inherit; font-size: 13px; margin: 8px 0; width: 100%; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); direction: ltr; }
   .toggle { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--muted); cursor: pointer; }
   .toggle input { accent-color: var(--series); width: 16px; height: 16px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
@@ -189,12 +216,57 @@
       </div>
     </section>
   </div>
+
+  <div class="grid" style="grid-template-columns: 1fr">
+    <section class="card" aria-labelledby="ipsTitle">
+      <h2><span id="ipsTitle">آدرس‌های آزاد</span><span class="state idle" id="ipsState">—</span></h2>
+      <div class="hint" style="margin: 0 0 12px">«آزاد» یعنی در ARP، DHCP، NAT و آدرس‌های روتر دیده نشد. دستگاهی که خاموش است و رزرو DHCP ندارد دیده نمی‌شود، پس گزارش را در ساعت کاری ببین.</div>
+      <div class="err" id="ipsErr"></div>
+      <div class="cols2">
+        <div>
+          <h3 class="sub2" id="lanTitle">شبکه‌ی داخلی</h3>
+          <select id="lanSel" aria-label="شبکه" hidden style="margin-bottom:8px"></select>
+          <div class="tiles">
+            <div class="tile"><b id="lanUsed">—</b><span>مصرف‌شده</span></div>
+            <div class="tile"><b id="lanFreeStatic">—</b><span>آزاد، ثابت</span></div>
+            <div class="tile"><b id="lanFreePool">—</b><span>آزاد، در DHCP</span></div>
+          </div>
+          <div class="sub2">آزاد، بیرون محدوده‌ی DHCP (امن برای آدرس ثابت)</div>
+          <div class="chips2" id="lanStatic"></div>
+          <div class="sub2">آزاد، داخل محدوده‌ی DHCP (خودکار داده می‌شود)</div>
+          <div class="chips2" id="lanPool"></div>
+          <div class="sub2" id="confTitle">دستگاه‌های ثابت داخل محدوده‌ی DHCP</div>
+          <div id="lanConf"></div>
+          <details class="used">
+            <summary id="usedSum">همه‌ی آدرس‌های مصرف‌شده</summary>
+            <input id="usedFilter" placeholder="جست‌وجو: آدرس، نام یا MAC" aria-label="جست‌وجو">
+            <div class="users" style="max-height: 340px">
+              <table>
+                <thead><tr><th>آدرس</th><th>محدوده</th><th>نوع</th><th>نام / MAC</th></tr></thead>
+                <tbody id="usedBody"></tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+        <div>
+          <h3 class="sub2">آدرس‌های عمومی</h3>
+          <div class="tiles">
+            <div class="tile"><b id="pubFree">—</b><span>آزاد روی روتر</span></div>
+            <div class="tile"><b id="pubFwd">—</b><span>فوروارد شده</span></div>
+            <div class="tile"><b id="pubMissing">—</b><span>در بلوک ولی روی روتر نیست</span></div>
+          </div>
+          <div id="pubBlocks"></div>
+          <div class="hint" id="pubHint"></div>
+        </div>
+      </div>
+    </section>
+  </div>
 </div>
 
 <script>
 'use strict';
 // Poll intervals: light on the router CPU, and paused while the tab is hidden.
-const EVERY = { system: 5000, ping: 10000, users: 30000, accounts: 60000 };
+const EVERY = { system: 5000, ping: 10000, users: 30000, accounts: 60000, ips: 60000 };
 const HISTORY_MS = 10 * 60 * 1000;
 const $ = (id) => document.getElementById(id);
 
@@ -713,8 +785,285 @@ $('ptChips').addEventListener('click', (e) => {
 });
 try { $('ptIp').value = localStorage.getItem('mini.pingTest') || ''; } catch { /* storage unavailable */ }
 
+// ---------- Free IP addresses (LAN and public)
+const ipToN = (s) => {
+  const a = String(s || '').trim().split('.');
+  if (a.length !== 4) return NaN;
+  let n = 0;
+  for (const p of a) {
+    if (!/^\d{1,3}$/.test(p) || Number(p) > 255) return NaN;
+    n = n * 256 + Number(p);
+  }
+  return n;
+};
+const nToIp = (n) => `${Math.floor(n / 16777216) % 256}.${Math.floor(n / 65536) % 256}.${Math.floor(n / 256) % 256}.${n % 256}`;
+const isPrivateN = (n) => (n >= 167772160 && n <= 184549375) || (n >= 2886729728 && n <= 2887778303) || (n >= 3232235520 && n <= 3232301055);
+const parseCidr = (s) => { const [ip, pl] = String(s).split('/'); return { ip, n: ipToN(ip), pl: Number(pl) }; };
+const blockOf = (n, pl) => { const size = 2 ** (32 - pl); const net = Math.floor(n / size) * size; return { net, size, last: net + size - 1 }; };
+function toRanges(nums) {
+  const a = [...nums].sort((x, y) => x - y);
+  const out = [];
+  let s = null, p = null;
+  for (const n of a) {
+    if (s === null) { s = p = n; }
+    else if (n === p + 1) p = n;
+    else { out.push([s, p]); s = p = n; }
+  }
+  if (s !== null) out.push([s, p]);
+  return out;
+}
+const rangeText = ([a, b]) => (a === b ? nToIp(a) : Math.floor(a / 256) === Math.floor(b / 256) ? `${nToIp(a)} - .${b % 256}` : `${nToIp(a)} - ${nToIp(b)}`);
+const rangeCount = (rs) => rs.reduce((t, [a, b]) => t + (b - a + 1), 0);
+const natText = (r) => `${r.protocol || 'any'}/${r['dst-port'] || '*'} -> ${r['to-addresses'] || '?'}:${r['to-ports'] || r['dst-port'] || ''}${r.comment ? '  ' + r.comment : ''}`;
+
+function analyzeLan(d, lan, dhcp) {
+  const inNet = (n) => n > lan.net && n < lan.last;
+  const used = new Map();
+  for (const a of d.arp) {
+    const n = ipToN(a.address);
+    if (!inNet(n) || !a['mac-address'] || a.complete === 'false') continue;
+    used.set(n, { type: 'arp', label: a['mac-address'], mac: a['mac-address'] });
+  }
+  for (const l of d.leases) {
+    const n = ipToN(l.address);
+    if (!inNet(n)) continue;
+    const dyn = l.dynamic !== 'false';
+    const name = l.comment || l['host-name'] || l['mac-address'] || '';
+    const mac = l['mac-address'] || '';
+    if (l.status === 'bound') used.set(n, { type: dyn ? 'lease' : 'reserved', label: name, mac });
+    else if (!dyn && !used.has(n)) used.set(n, { type: 'reserved', label: `${name} (خاموش)`, mac });
+  }
+  for (const a of d.addrs) if (inNet(a.n)) used.set(a.n, { type: 'router', label: `این روتر (${a.ifc})`, mac: '' });
+  for (const r of d.nat) {
+    if (r.action !== 'dst-nat' || r.disabled === 'true') continue;
+    const n = ipToN(r['to-addresses']);
+    if (!inNet(n)) continue;
+    const note = `[فوروارد ${r.comment || r['dst-port'] || ''}]`;
+    const u = used.get(n);
+    if (u) u.label += ' ' + note; else used.set(n, { type: 'nat', label: 'هدف پورت‌فوروارد ' + note, mac: '' });
+  }
+  const inpool = new Set();
+  for (const s of dhcp) {
+    const pool = d.pools.find((p) => p.name === s['address-pool']);
+    if (!pool) continue;
+    for (const part of String(pool.ranges || '').split(',')) {
+      const [a, b] = part.split('-');
+      const lo = ipToN(a), hi = b === undefined ? lo : ipToN(b);
+      if (isNaN(lo) || isNaN(hi) || hi < lo || hi - lo > 4096) continue;
+      for (let n = lo; n <= hi; n++) if (inNet(n)) inpool.add(n);
+    }
+  }
+  const freeStatic = [], freePool = [];
+  for (let n = lan.net + 1; n < lan.last; n++) {
+    if (used.has(n)) continue;
+    (inpool.has(n) ? freePool : freeStatic).push(n);
+  }
+  const conflicts = [...used].filter(([n, v]) => v.type === 'arp' && inpool.has(n)).sort((x, y) => x[0] - y[0]);
+  return { used, inpool, freeStatic: toRanges(freeStatic), freePool: toRanges(freePool), conflicts, hosts: lan.size - 2 };
+}
+
+function analyzePublic(d, lanIfs) {
+  const wild = [];
+  const byDst = new Map(); // address -> { on: [], off: [] }
+  for (const r of d.nat) {
+    if (r.action !== 'dst-nat' || r.dynamic === 'true') continue;
+    const slot = r['dst-address'] ? (byDst.get(r['dst-address']) || byDst.set(r['dst-address'], { on: [], off: [] }).get(r['dst-address'])) : null;
+    if (!slot) { if (r.disabled !== 'true') wild.push(natText(r)); continue; }
+    (r.disabled === 'true' ? slot.off : slot.on).push(natText(r));
+  }
+  const gw = (d.routes.find((r) => r['dst-address'] === '0.0.0.0/0' && r.disabled !== 'true') || {}).gateway || '';
+  const gwn = ipToN(String(gw).split('%')[0]);
+  const cfg = new Map();
+  const blocks = new Map();
+  for (const a of d.addrs) {
+    if (isPrivateN(a.n)) continue;
+    cfg.set(a.n, a.ifc);
+    if (a.pl >= 8 && a.pl <= 30) {
+      const b = blockOf(a.n, a.pl);
+      if (!blocks.has(b.net)) blocks.set(b.net, { ...b, pl: a.pl });
+    }
+  }
+  const out = [];
+  let free = 0, fwd = 0, missing = 0;
+  for (const b of [...blocks.values()].sort((x, y) => x.net - y.net)) {
+    const rows = [];
+    const miss = [];
+    for (let n = b.net; n <= b.last; n++) {
+      const ip = nToIp(n);
+      if (cfg.has(n)) {
+        const ifc = cfg.get(n);
+        const slot = byDst.get(ip);
+        let status, text = '';
+        if (n === b.net) { status = 'network'; text = 'آدرس شبکه‌ی بلوک است و معمولاً نباید روی دستگاه باشد، از ISP بپرس'; }
+        else if (n === b.last) { status = 'broadcast'; text = 'آدرس broadcast بلوک است و معمولاً نباید روی دستگاه باشد، از ISP بپرس'; }
+        else if (slot && slot.on.length) { status = 'forwarded'; text = slot.on.join('  |  '); fwd++; }
+        else { status = 'free'; free++; text = slot && slot.off.length ? `قانون غیرفعال: ${slot.off.join('  |  ')}` : ''; }
+        rows.push({ ip, ifc, status, text, lan: lanIfs.has(ifc) });
+      } else if (n !== b.net && n !== b.last && n !== gwn) miss.push(n);
+    }
+    const mr = toRanges(miss);
+    missing += rangeCount(mr);
+    out.push({ ...b, rows, missing: mr });
+  }
+  return { blocks: out, free, fwd, missing, gw, wild };
+}
+
+let ipsData = null;
+let lanChoice = '';
+const clip = async (text, btn) => {
+  try { await navigator.clipboard.writeText(text); btn.textContent = 'کپی شد'; }
+  catch { btn.textContent = 'کپی نشد'; }
+  setTimeout(() => (btn.textContent = 'کپی دستور'), 1500);
+};
+// Each chip is built from separate left-to-right pieces so the right-to-left page cannot reorder it.
+const chipEl = ([a, b], cls) => {
+  const c = el('span', `chip2 ${cls || ''}`);
+  c.append(el('span', '', nToIp(a)));
+  if (b !== a) {
+    c.append(el('span', '', '–'));
+    c.append(el('span', '', Math.floor(a / 256) === Math.floor(b / 256) ? `.${b % 256}` : nToIp(b)));
+  }
+  return c;
+};
+const chips = (box, ranges, cls) => {
+  box.textContent = '';
+  if (!ranges.length) { box.append(el('span', 'hint', 'هیچ')); return; }
+  for (const r of ranges) box.append(chipEl(r, cls));
+};
+
+function renderIps() {
+  const d = ipsData;
+  if (!d) return;
+  const addrs = d.addresses.filter((a) => a.disabled !== 'true').map((a) => ({ ...parseCidr(a.address), ifc: a.interface })).filter((a) => !isNaN(a.n));
+  const dhcp = d.dhcpServers.filter((s) => s.disabled !== 'true');
+  const dhcpIf = new Set(dhcp.map((s) => s.interface));
+  const data = { ...d, addrs };
+
+  // LAN networks: private addresses on interfaces that run a DHCP server (else every private address).
+  const lans = new Map();
+  for (const pass of [true, false]) {
+    for (const a of addrs) {
+      if (!isPrivateN(a.n) || a.pl < 22 || a.pl > 30 || (pass && !dhcpIf.has(a.ifc))) continue;
+      const b = blockOf(a.n, a.pl);
+      if (!lans.has(b.net)) lans.set(b.net, { ...b, pl: a.pl, ifc: a.ifc });
+    }
+    if (lans.size) break;
+  }
+  const sel = $('lanSel');
+  const list = [...lans.values()].sort((x, y) => x.net - y.net);
+  sel.hidden = list.length < 2;
+  sel.textContent = '';
+  for (const l of list) sel.append(new Option(`${nToIp(l.net)}/${l.pl}`, String(l.net)));
+  if (!list.some((l) => String(l.net) === lanChoice)) lanChoice = list[0] ? String(list[0].net) : '';
+  sel.value = lanChoice;
+
+  const lan = list.find((l) => String(l.net) === lanChoice);
+  if (lan) {
+    const r = analyzeLan(data, lan, dhcp);
+    $('lanTitle').textContent = `شبکه‌ی داخلی ${nToIp(lan.net)}/${lan.pl}`;
+    $('lanUsed').textContent = `${r.used.size} / ${r.hosts}`;
+    $('lanFreeStatic').textContent = rangeCount(r.freeStatic);
+    $('lanFreePool').textContent = rangeCount(r.freePool);
+    chips($('lanStatic'), r.freeStatic, 'good');
+    chips($('lanPool'), r.freePool, '');
+    const conf = $('lanConf');
+    conf.textContent = '';
+    $('confTitle').textContent = `دستگاه‌های ثابت داخل محدوده‌ی DHCP (${r.conflicts.length})`;
+    if (!r.conflicts.length) conf.append(el('span', 'hint', 'هیچ'));
+    for (const [n, v] of r.conflicts) {
+      const ip = nToIp(n);
+      const cmd = `/ip dhcp-server lease add address=${ip} mac-address=${v.mac}`;
+      const row = el('div', 'warnrow');
+      const left = el('span', '', `${ip}  ${v.mac}`);
+      left.style.direction = 'ltr';
+      const btn = el('button', 'copy', 'کپی دستور');
+      btn.type = 'button';
+      btn.title = `رزرو کردن این آدرس برای همین دستگاه، تا DHCP آن را به دیگری ندهد: ${cmd}`;
+      btn.addEventListener('click', () => clip(cmd, btn));
+      row.append(left, btn);
+      conf.append(row);
+    }
+    $('usedSum').textContent = `همه‌ی آدرس‌های مصرف‌شده (${r.used.size})`;
+    const body = $('usedBody');
+    body.textContent = '';
+    const kind = { arp: 'ثابت', lease: 'DHCP', reserved: 'رزرو', router: 'روتر', nat: 'فوروارد' };
+    for (const [n, v] of [...r.used].sort((x, y) => x[0] - y[0])) {
+      const tr = el('tr');
+      tr.dataset.q = `${nToIp(n)} ${v.label} ${v.mac}`.toLowerCase();
+      const a = el('td', 'num', nToIp(n));
+      const z = el('td', '', r.inpool.has(n) ? 'داخل DHCP' : 'ثابت');
+      const t = el('td', '', kind[v.type] || v.type);
+      const w = el('td', '', v.type === 'arp' ? v.mac : v.label);
+      w.title = [v.label, v.mac].filter(Boolean).join(' · ');
+      tr.append(a, z, t, w);
+      body.append(tr);
+    }
+    applyUsedFilter();
+  } else {
+    $('lanTitle').textContent = 'شبکه‌ی داخلی';
+    for (const id of ['lanUsed', 'lanFreeStatic', 'lanFreePool']) $(id).textContent = '—';
+    $('lanStatic').textContent = '';
+    $('lanPool').textContent = '';
+    $('lanConf').textContent = 'شبکه‌ی داخلی با سرور DHCP پیدا نشد.';
+  }
+
+  const pub = analyzePublic(data, dhcpIf);
+  $('pubFree').textContent = pub.free;
+  $('pubFwd').textContent = pub.fwd;
+  $('pubMissing').textContent = pub.missing;
+  const box = $('pubBlocks');
+  box.textContent = '';
+  if (!pub.blocks.length) box.append(el('span', 'hint', 'آدرس عمومی روی روتر نیست.'));
+  for (const b of pub.blocks) {
+    const wrap = el('div', 'block');
+    const h3 = el('h3');
+    h3.append('بلوک ', el('span', 'ltrx', `${nToIp(b.net)} - ${nToIp(b.last)}`), ` (${b.size} آدرس)`);
+    wrap.append(h3);
+    const stLabel = { forwarded: 'فوروارد شده', free: 'آزاد', network: 'آدرس شبکه', broadcast: 'broadcast' };
+    for (const r of b.rows) {
+      const row = el('div', 'prow');
+      row.append(el('span', 'ipc ltrx', r.ip), el('span', 'tag', r.ifc + (r.lan ? ' (داخلی)' : '')));
+      const tag = el('span', `tag stg ${r.status === 'free' ? 'st-free' : r.status === 'forwarded' ? '' : 'st-warn'}`, stLabel[r.status]);
+      row.append(tag);
+      if (r.text) row.append(el('div', 'txt', r.text));
+      wrap.append(row);
+    }
+    if (b.missing.length) {
+      wrap.append(el('div', 'hint', 'در این بلوک ولی روی روتر نیست:'));
+      const mc = el('div', 'chips2');
+      for (const r of b.missing) mc.append(chipEl(r));
+      wrap.append(mc);
+    }
+    box.append(wrap);
+  }
+  const hint = $('pubHint');
+  hint.textContent = '';
+  if (pub.gw) hint.append('دروازه‌ی ISP: ', el('span', 'ltrx', pub.gw), '. ');
+  hint.append('آدرس‌هایی که «روی روتر نیست» فقط وقتی قابل استفاده‌اند که ISP به تو داده باشد و اول روی روتر اضافه شوند.');
+  if (pub.wild.length) hint.append(' قانون فوروارد بدون آدرس مقصد (برای همه‌ی آدرس‌ها): ', el('span', 'ltrx', pub.wild.join(' | ')));
+  setState($('ipsState'), 'good', lan ? `${rangeCount(analyzeLan(data, lan, dhcp).freeStatic)} آزاد` : 'آماده');
+}
+
+function applyUsedFilter() {
+  const q = $('usedFilter').value.trim().toLowerCase();
+  for (const tr of $('usedBody').children) tr.hidden = !!q && !tr.dataset.q.includes(q);
+}
+$('usedFilter').addEventListener('input', applyUsedFilter);
+$('lanSel').addEventListener('change', (e) => { lanChoice = e.target.value; renderIps(); });
+
+async function loadIps() {
+  try {
+    ipsData = await fetchJson('/api/ips');
+    $('ipsErr').textContent = '';
+    renderIps();
+  } catch (e) {
+    $('ipsErr').textContent = e?.error === 0 ? '' : errorText(e);
+    setState($('ipsState'), 'idle', 'نامعلوم');
+  }
+}
+
 // ---------- scheduling
-const jobs = [[loadSystem, EVERY.system], [loadPing, EVERY.ping], [loadUsers, EVERY.users], [loadAccounts, EVERY.accounts]];
+const jobs = [[loadSystem, EVERY.system], [loadPing, EVERY.ping], [loadUsers, EVERY.users], [loadAccounts, EVERY.accounts], [loadIps, EVERY.ips]];
 const timers = [];
 function start() {
   stop();
